@@ -74,7 +74,7 @@ class RequestClient {
     return this.request('PUT', uri, data, headers);
   }
   delete(uri, headers) {
-    return this.request('DELETE', uri, data, headers);
+    return this.request('DELETE', uri, undefined, headers);
   }
 
   // If the response body is a JSON -> parse it to return as a JSON object.

@@ -51,8 +51,8 @@ client.delete({
 About
 -----
 
-Source code of this project: https://github.com/mrsarm/reqclient
+**Source code**: https://github.com/mrsarm/reqclient
 
-Author: Mariano Ruiz <mrsarm@gmail.com>
+**Author**: Mariano Ruiz <mrsarm@gmail.com>
 
 2016  |  Apache-2.0
