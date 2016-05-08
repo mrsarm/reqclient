@@ -1,0 +1,21 @@
+{
+  "name": "reqclient",
+  "version": "0.1.0",
+  "description": "reqclient uses `request` to make requests, but in an asynchronous way returning `Promise` objects",
+  "author": "Mariano Ruiz <mrsarm@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrsarm/reqclient.git"
+  },
+  "bugs": {
+    "url": "http://github.com/mrsarm/reqclient/issues"
+  },
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "engines": {
+    "node": ">=4.0.0"
+  },
+  "dependencies": {
+    "request": ""
+  }
+}
