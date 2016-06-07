@@ -22,29 +22,35 @@ var request = require('request');
  * responses without blocking the execution, and removes
  * boilerplate configurations on each request: base URL, time out,
  * content type format and error handling.
+ * Also allows log all operations, with `cURL` format.
  */
 class RequestClient {
 
   /**
-   *
-   * @param baseUrl The base URL for all the request
-   * @param defaultTimeout (optional) The TTL of the request
-   * @param contentType (optional, default `json`) Content type,
-   *        valid values: `json`, `form` or `formData`
-   * @param logger (optional, by default uses the `console` object)
-   *        The logger used to debug requests and log errors
-     */
-  constructor(baseUrl, defaultTimeout, contentType, logger, debugRequest, debugResponse) {
-    this.baseUrl = baseUrl;
-    if (baseUrl[baseUrl.length-1]!="/") {
+   * @param config A string with the the base URL, or an object with the following configuration:
+   * - baseUrl The base URL for all the request
+   * - timeout (optional) The TTL of the request
+   * - contentType (optional, default `json`) Content type,
+   *               valid values: `json`, `form` or `formData`
+   * - debugRequest (optional) if it's set to `true`, all requests
+   *                will logged with `logger` object in a `cURL` style.
+   * - debugResponse (optional) if it's set to `true`, all responses
+   *                 will logged with `logger` object.
+   * - logger (optional, by default uses the `console` object)
+   *          The logger used to log requests, responses and errors
+   */
+  constructor(config) {
+    this.baseUrl = config.baseUrl;
+    if (this.baseUrl[this.baseUrl.length-1]!="/") {
       this.baseUrl += "/";
     }
-    this.defaultTimeout = defaultTimeout;
-    this.contentType = contentType || 'json';
-    this.logger = logger || console;
-    this.debugRequest = debugRequest || true;
-    this.debugResponse = debugResponse || true;
+    this.timeout = config.timeout;
+    this.contentType = config.contentType || 'json';
+    this.debugRequest = config.debugRequest || false;
+    this.debugResponse = config.debugResponse || false;
+    this.logger = config.logger || console;
   }
+
   request(method, uri, data, headers) {
     var self = this;
     return new Promise(function(fulfill, reject) {
@@ -58,13 +64,14 @@ class RequestClient {
         if (httpResponse && httpResponse.statusCode < 400) {
           fulfill(self._prepareResponseBody(body), httpResponse);   // Successful request
         } else if (error) {
-          self._handleError(error, options["url"], method, reject); // Fatal client or server error (unreachable server, time out...)
+          self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
         } else {
           reject(self._prepareResponseBody(body));                  // The server response has status error, due mostly by a wrong client request
         }
       });
     });
   }
+
   get(uri, headers) {
     return this.request('GET', uri, undefined, headers);
   }
@@ -93,6 +100,7 @@ class RequestClient {
   _prepareOptions(uri, headers, data) {
     var uriOpt = uri;
     if (typeof(uri)=='object') {
+      uriOpt = Object.assign({}, uri);
       var query = [];
       if ("query" in uri && uri["query"]) {
         for (var k in uri["query"]) {
@@ -114,8 +122,8 @@ class RequestClient {
     if (data) {
       options[this.contentType] = data;
     }
-    if (this.defaultTimeout) {
-      options["timeout"] = this.defaultTimeout
+    if (this.timeout) {
+      options["timeout"] = this.timeout
     }
     return options;
   }
@@ -124,6 +132,9 @@ class RequestClient {
   _debugRequest(options, uri) {
     if (this.debugRequest) {
       var curl = options.url;
+      if (curl.indexOf('&')>0 || curl.indexOf(' ')>0) {
+        curl = '"' + curl + '"';
+      }
       if (options.method != 'GET') {
         curl = '-X ' + options.method + ' ' + curl;
       }
@@ -140,8 +151,8 @@ class RequestClient {
       if ((!options["headers"] || !options["headers"]["Content-Type"]) && this.contentType=="json") {
         curl += ' -H Content-Type:application/json'
       }
-      if (this.defaultTimeout) {
-        curl += ' --connect-timeout ' + (this.defaultTimeout / 1000.0); // ms to sec
+      if (this.timeout) {
+        curl += ' --connect-timeout ' + (this.timeout / 1000.0); // ms to sec
       }
       if (typeof(uri)!='string') {
         uri = uri["uri"];
@@ -166,9 +177,12 @@ class RequestClient {
   }
 
   // Handle the unexpected errors
-  _handleError(error, url, action, reject) {
+  _handleError(error, uri, options, reject) {
     if (['ETIMEDOUT','ECONNREFUSED','ENOTFOUND'].indexOf(error.code)>=0) {
-      this.logger.error("Error doing %s to %s. %s", action, url, error);
+      if (typeof(uri)!='string') {
+        uri = uri["uri"];
+      }
+      this.logger.error("[Error      %s]<- Doing %s to %s. %s", uri, options.method, options.url, error);
       reject(new ConnectionError("Connection error", error));
     } else {
       reject(error);
