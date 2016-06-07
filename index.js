@@ -14,8 +14,6 @@
 
 'use strict';
 
-"use strict";
-
 var request = require('request');
 
 /**
@@ -36,7 +34,7 @@ class RequestClient {
    * @param logger (optional, by default uses the `console` object)
    *        The logger used to debug requests and log errors
      */
-  constructor(baseUrl, defaultTimeout, contentType, logger) {
+  constructor(baseUrl, defaultTimeout, contentType, logger, debugRequest, debugResponse) {
     this.baseUrl = baseUrl;
     if (baseUrl[baseUrl.length-1]!="/") {
       this.baseUrl += "/";
@@ -44,14 +42,20 @@ class RequestClient {
     this.defaultTimeout = defaultTimeout;
     this.contentType = contentType || 'json';
     this.logger = logger || console;
+    this.debugRequest = debugRequest || true;
+    this.debugResponse = debugResponse || true;
   }
   request(method, uri, data, headers) {
     var self = this;
     return new Promise(function(fulfill, reject) {
       var options = self._prepareOptions(uri, headers, data);
       options.method = method;
+      self._debugRequest(options, uri);
       request(options, function(error, httpResponse, body) {
-        if (httpResponse!=undefined && httpResponse.statusCode < 400) {
+        if (httpResponse && httpResponse.statusCode) {
+          self._debugResponse(uri, httpResponse.statusCode, body);
+        }
+        if (httpResponse && httpResponse.statusCode < 400) {
           fulfill(self._prepareResponseBody(body), httpResponse);   // Successful request
         } else if (error) {
           self._handleError(error, options["url"], method, reject); // Fatal client or server error (unreachable server, time out...)
@@ -87,7 +91,8 @@ class RequestClient {
 
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
   _prepareOptions(uri, headers, data) {
-    if (typeof uri == 'object') {
+    var uriOpt = uri;
+    if (typeof(uri)=='object') {
       var query = [];
       if ("query" in uri && uri["query"]) {
         for (var k in uri["query"]) {
@@ -96,23 +101,68 @@ class RequestClient {
       }
       if ("params" in uri && uri["params"]) {
         for (var k in uri["params"]) {
-          uri["uri"] = uri["uri"].replace("{"+k+"}", uri["params"][k]);
+          uriOpt["uri"] = uriOpt["uri"].replace("{"+k+"}", uri["params"][k]);
         }
       }
-      uri = uri["uri"];
-      if (query.length>0) uri += "?" + query.join("&");
+      uriOpt = uriOpt["uri"];
+      if (query.length>0) uriOpt += "?" + query.join("&");
     }
-    var options = {url: this.baseUrl + uri};
-    if (headers!=undefined) {
+    var options = {url: this.baseUrl + uriOpt};
+    if (headers) {
       options["headers"] = headers;
     }
-    if (data!=undefined) {
+    if (data) {
       options[this.contentType] = data;
     }
-    if (this.defaultTimeout!=undefined) {
+    if (this.defaultTimeout) {
       options["timeout"] = this.defaultTimeout
     }
     return options;
+  }
+
+  // Debug request in cURL format
+  _debugRequest(options, uri) {
+    if (this.debugRequest) {
+      var curl = options.url;
+      if (options.method != 'GET') {
+        curl = '-X ' + options.method + ' ' + curl;
+      }
+      if (options[this.contentType]) {
+        var data = options[this.contentType];
+        if (typeof(data)!='string' && this.contentType=="json") {
+          data = JSON.stringify(data);
+        }
+        curl += " -d '" + data + "'";
+      }
+      for (var k in options["headers"]) {
+        curl += " -H '" + k + ":" + options["headers"][k] + "'";
+      }
+      if ((!options["headers"] || !options["headers"]["Content-Type"]) && this.contentType=="json") {
+        curl += ' -H Content-Type:application/json'
+      }
+      if (this.defaultTimeout) {
+        curl += ' --connect-timeout ' + (this.defaultTimeout / 1000.0); // ms to sec
+      }
+      if (typeof(uri)!='string') {
+        uri = uri["uri"];
+      }
+      this.logger.log("[Requesting %s]-> %s", uri, curl);
+    }
+  }
+
+  // Debug response status and body
+  _debugResponse(uri, status, body) {
+    if (this.debugResponse) {
+      if (body==undefined) {
+        body = "";
+      } else if (typeof(body)!='string') {
+        body = JSON.stringify(body);
+      }
+      if (typeof(uri)!='string') {
+        uri = uri["uri"];
+      }
+      this.logger.log("[Response   %s]<- Status %s - %s", uri, status, body);
+    }
   }
 
   // Handle the unexpected errors
