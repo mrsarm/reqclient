@@ -32,6 +32,8 @@ class RequestClient {
    * - timeout (optional) The TTL of the request
    * - contentType (optional, default `json`) Content type,
    *               valid values: `json`, `form` or `formData`
+   * - cache (optional, default false) if it's set to `true`,
+   *         adds cache support to GET requests
    * - debugRequest (optional) if it's set to `true`, all requests
    *                will logged with `logger` object in a `cURL` style.
    * - debugResponse (optional) if it's set to `true`, all responses
@@ -40,40 +42,53 @@ class RequestClient {
    *          The logger used to log requests, responses and errors
    */
   constructor(config) {
-    this.baseUrl = config.baseUrl;
-    if (this.baseUrl[this.baseUrl.length-1]!="/") {
-      this.baseUrl += "/";
+    if (typeof(config)!='string') {
+      this.baseUrl = config.baseUrl;
+      if (this.baseUrl[this.baseUrl.length - 1] != "/") {
+        this.baseUrl += "/";
+      }
+      this.timeout = config.timeout;
+      this.contentType = config.contentType || 'json';
+      this.debugRequest = config.debugRequest || false;
+      this.debugResponse = config.debugResponse || false;
+      this.logger = config.logger || console;
+      if (config.cache) {
+        this._initCache();
+      }
+    } else {
+      this.baseUrl = config;
     }
-    this.timeout = config.timeout;
-    this.contentType = config.contentType || 'json';
-    this.debugRequest = config.debugRequest || false;
-    this.debugResponse = config.debugResponse || false;
-    this.logger = config.logger || console;
   }
 
-  request(method, uri, data, headers) {
-    var self = this;
-    return new Promise(function(fulfill, reject) {
-      var options = self._prepareOptions(uri, headers, data);
-      options.method = method;
-      self._debugRequest(options, uri);
-      request(options, function(error, httpResponse, body) {
-        if (httpResponse && httpResponse.statusCode) {
-          self._debugResponse(uri, httpResponse.statusCode, body);
-        }
-        if (httpResponse && httpResponse.statusCode < 400) {
-          fulfill(self._prepareResponseBody(body), httpResponse);   // Successful request
-        } else if (error) {
-          self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
-        } else {
-          reject(self._prepareResponseBody(body));                  // The server response has status error, due mostly by a wrong client request
-        }
+  request(method, uri, data, headers, cacheTtl /* sec */) {
+    if (this.cache && method=='GET' && cacheTtl!=undefined) {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        var parsedUri = self._parseUri(uri);
+        self.cache.get(parsedUri, function (err, value) {
+          if (!err) {
+            if (value!=undefined) {
+              self._debugCacheResponse(uri, value);
+              resolve(value);
+            } else {
+              // Do the request and save the result in the cache before returns (anyway returns in async way the promise)
+              resolve(self._doRequest(method, uri, undefined, headers).then(function(result) {
+                self.cache.set(parsedUri, result, cacheTtl,
+                  (err, success) => { if (err || !success) self.logger.error('Error saving "%s" in cache. %s', parsedUri, err) });
+                return result;
+              }));
+            }
+          } else {
+            reject(err);
+          }
+        });
       });
-    });
+    } else {
+      return this._doRequest(method, uri, data, headers);
+    }
   }
-
-  get(uri, headers) {
-    return this.request('GET', uri, undefined, headers);
+  get(uri, headers, cacheTtl) {
+    return this.request('GET', uri, undefined, headers, cacheTtl);
   }
   post(uri, data, headers) {
     return this.request('POST', uri, data, headers);
@@ -86,6 +101,27 @@ class RequestClient {
   }
   delete(uri, headers) {
     return this.request('DELETE', uri, undefined, headers);
+  }
+
+  _doRequest(method, uri, data, headers) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      var options = self._prepareOptions(uri, headers, data);
+      options.method = method;
+      self._debugRequest(options, uri);
+      request(options, function(error, httpResponse, body) {
+        if (httpResponse && httpResponse.statusCode) {
+          self._debugResponse(uri, httpResponse.statusCode, body);
+        }
+        if (httpResponse && httpResponse.statusCode < 400) {
+          resolve(self._prepareResponseBody(body));       // Successful request
+        } else if (error) {
+          self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
+        } else {
+          reject(self._prepareResponseBody(body));        // The server response has status error, due mostly by a wrong client request
+        }
+      });
+    });
   }
 
   // If the response body is a JSON -> parse it to return as a JSON object.
@@ -175,10 +211,14 @@ class RequestClient {
       } else if (typeof(body)!='string') {
         body = JSON.stringify(body);
       }
-      if (typeof(uri)!='string') {
-        uri = uri["uri"];
-      }
-      this.logger.log("[Response   %s]<- Status %s - %s", uri, status, body);
+      this.logger.log("[Response   %s]<- Status %s - %s", typeof(uri)=='string'?uri:uri['uri'], status, body);
+    }
+  }
+
+  // Debug response cache
+  _debugCacheResponse(uri, body) {
+    if (this.debugResponse) {
+      this.logger.log("[Response   %s]<- Returning from cache", typeof(uri) == 'string' ? uri : uri['uri']);
     }
   }
 
@@ -193,6 +233,13 @@ class RequestClient {
     } else {
       reject(error);
     }
+  }
+
+  // Creates the `_cache` object that manage the cache
+  // that stores the GET response
+  _initCache() {
+    var NodeCache = require("node-cache");
+    this.cache = new NodeCache();
   }
 }
 
