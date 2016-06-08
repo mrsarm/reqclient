@@ -32,12 +32,15 @@ class RequestClient {
    * - timeout (optional) The TTL of the request
    * - contentType (optional, default `json`) Content type,
    *               valid values: `json`, `form` or `formData`
+   * - headers (optional) object with default values to send as headers.
+   *           Additional headers values can be added in the request
+   *           call, even override these values
    * - cache (optional, default false) if it's set to `true`,
    *         adds cache support to GET requests
    * - debugRequest (optional) if it's set to `true`, all requests
    *                will logged with `logger` object in a `cURL` style.
    * - debugResponse (optional) if it's set to `true`, all responses
-   *                 will logged with `logger` object.
+   *                 will logged with `logger` object
    * - logger (optional, by default uses the `console` object)
    *          The logger used to log requests, responses and errors
    */
@@ -52,6 +55,7 @@ class RequestClient {
       this.debugRequest = config.debugRequest || false;
       this.debugResponse = config.debugResponse || false;
       this.logger = config.logger || console;
+      this.headers = config.headers || {};
       if (config.cache) {
         this._initCache();
       }
@@ -135,8 +139,12 @@ class RequestClient {
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
   _prepareOptions(uri, headers, data) {
     var options = {url: this.baseUrl + this._parseUri(uri)};
-    if (headers) {
-      options["headers"] = headers;
+    if (headers || this.headers) {
+      if (headers) {
+        options["headers"] = Object.assign(this.headers, headers);
+      } else {
+        options["headers"] = this.headers;
+      }
     }
     if (data) {
       options[this.contentType] = data;

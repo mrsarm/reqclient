@@ -16,9 +16,12 @@ HTTP client module [request](https://www.npmjs.com/package/request),
 but makes requests in an asynchronous way, returning
 [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 objects to handle the responses without blocking
-the execution, and removes boilerplate configurations on each request:
-base URL, time out, content type format and error handling. Also allows
-to log all operations in `cURL` syntax style.
+the execution, and **removes boilerplate configurations** on each
+request: base URL, time out, content type format, default headers,
+and error handling.
+
+Also support **in-memory cache** of GET responses, and allows to
+**log all operations** in `cURL` syntax style.
 
 ```js
 var RequestClient = require("reqclient").RequestClient;
@@ -59,6 +62,11 @@ following options:
 - `timeout` (optional) The TTL of the request
 - `contentType` (optional, default `json`) Content type, valid
   values: `json`, `form` or `formData`
+- `headers` (optional) object with default values to send as headers.
+  Additional headers values can be added in the request
+  call, even override these values
+- `cache` (optional, default false) if it's set to `true`,
+  adds cache support to GET requests
 - `debugRequest` (optional) if it's set to `true`, all requests
   will logged with `logger` object in a `cURL` style.
 - `debugResponse` (optional) if it's set to `true`, all responses

@@ -1,6 +1,6 @@
 {
   "name": "reqclient",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "reqclient uses `request` to make requests, but in an asynchronous way returning `Promise` objects",
   "author": "Mariano Ruiz <mrsarm@gmail.com> (http://www.mrdev.com.ar)",
   "contributors": [
@@ -16,9 +16,12 @@
   "license": "Apache-2.0",
   "main": "index.js",
   "engines": {
-    "node": ">=4.0.0"
+    "node": ">=4.4.0"
   },
   "dependencies": {
     "request": ""
+  },
+  "devDependencies": {
+    "node-cache": "^3.2.1"
   }
 }
