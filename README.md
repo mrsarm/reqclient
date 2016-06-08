@@ -76,27 +76,37 @@ object is created, the constructor parameters passed can
 override this behavior (see above section).
 
 In case the request activity is logged, the `_debugRequest()` method
-will print with a `cURL` syntax format _(awesome!)_.
+will print with a `cURL` syntax format _(awesome!)_. This is really
+useful in development phase, when you need to know what it's doing your
+application, and you need to reproduce the calls outside the application.
 
 ```js
 var RequestClient = require("reqclient").RequestClient;
 var client = new RequestClient({
         baseUrl: "http://baseurl.com/api/v1.1",
-        debugRequest: true,
-        debugResponse: true
+        debugRequest: true, debugResponse: true
     });
 
 client.post("client/orders", {"client": 1234, "ref_id": "A987"}, {"x-token": "AFF01XX"})
 /* This will log ...
 [Requesting client/orders]-> -X POST http://baseurl.com/api/v1.1/client/orders -d '{"client": 1234, "ref_id": "A987"}' -H '{"x-token": "AFF01XX"}' -H Content-Type:application/json
 And when the response is returned ...
-[Response   client/orders]<- Status 200 - {"orderId": 1320934}
+[Response   client/orders]<- Status 200 - {"orderId": 1320934} */
 
 ```
 
-**NOTE**: The logging chosen can affect performance, and most important, it might have information security implications for your deployment, because the logger doesn't filter any sensitive data, like passwords,
-tokens, and private information. Don't set `debugRequest` or `debugResponse` to `true` in
-production environments. 
+**NOTE**: The logging chosen can affect performance, and most important,
+it might have information security implications for your deployment,
+because the logger doesn't filter any sensitive data, like passwords,
+tokens, and private information. Don't set `debugRequest`
+or `debugResponse` to `true` in production environments.
+
+
+Requirements
+------------
+
+- Node.js 4.4+ (supports Javascript classes).
+- `request` module.
 
 
 About

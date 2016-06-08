@@ -98,6 +98,22 @@ class RequestClient {
 
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
   _prepareOptions(uri, headers, data) {
+    var options = {url: this.baseUrl + this._parseUri(uri)};
+    if (headers) {
+      options["headers"] = headers;
+    }
+    if (data) {
+      options[this.contentType] = data;
+    }
+    if (this.timeout) {
+      options["timeout"] = this.timeout
+    }
+    return options;
+  }
+
+  // If the `uri` is an object like `{ "uri": "users/{id}", "params": {"id": 1234}, "query": {"summarize": true, "info": "sales"} }`,
+  // parse it as a full URI string: "users/1234?summarize=true&info=sales"
+  _parseUri(uri) {
     var uriOpt = uri;
     if (typeof(uri)=='object') {
       uriOpt = Object.assign({}, uri);
@@ -115,17 +131,7 @@ class RequestClient {
       uriOpt = uriOpt["uri"];
       if (query.length>0) uriOpt += "?" + query.join("&");
     }
-    var options = {url: this.baseUrl + uriOpt};
-    if (headers) {
-      options["headers"] = headers;
-    }
-    if (data) {
-      options[this.contentType] = data;
-    }
-    if (this.timeout) {
-      options["timeout"] = this.timeout
-    }
-    return options;
+    return uriOpt;
   }
 
   // Debug request in cURL format
