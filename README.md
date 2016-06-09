@@ -126,8 +126,8 @@ again. If the `RequestClient` object isn't initialized with the
 client.get({ "uri": "orders", "query": {"state": "open", "limit": 10} }, {}, 60 /* seconds */)
 ```
 
-This library use the `node-cache` to create the _in-memory_ cache. If
-you activate this feature, you need to add this dependency in your
+This library use the `node-cache` module to create the _in-memory_
+cache. If you activate this feature, you need to add this dependency in your
 project.
 
 In the example above, the cache will expire in 60 seconds, but you have
