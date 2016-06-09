@@ -122,7 +122,8 @@ again. If the `RequestClient` object isn't initialized with the
 `cache` option, the `ttl` parameter in the request calls will ignored.
 
 ```js
-// GET to "../orders?state=open&limit=10" and cache for 60 seconds 
+var client = new RequestClient({baseUrl:"https://myapp.com/api/v1", cache:true});
+// GET to "https://myapp.com/api/v1/orders?state=open&limit=10" and cache for 60 seconds 
 client.get({ "uri": "orders", "query": {"state": "open", "limit": 10} }, {}, 60 /* seconds */)
 ```
 
