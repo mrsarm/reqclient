@@ -110,11 +110,57 @@ tokens, and private information. Don't set `debugRequest`
 or `debugResponse` to `true` in production environments.
 
 
+Cache
+-----
+
+By default `reqclient` don't cache results. You can activate cache
+of GET responses passing to its constructor config the
+option `cache: true`. Then, if you add the `ttl` parameter (in seconds)
+in a `get()` call, the module will cache the result to return the
+the same response the next call without accessing to the endpoint
+again. If the `RequestClient` object isn't initialized with the
+`cache` option, the `ttl` parameter in the request calls will ignored.
+
+```js
+// GET to "../orders?state=open&limit=10" and cache for 60 seconds 
+client.get({ "uri": "orders", "query": {"state": "open", "limit": 10} }, {}, 60 /* seconds */)
+```
+
+This library use the `node-cache` to create the _in-memory_ cache. If
+you activate this feature, you need to add this dependency in your
+project.
+
+In the example above, the cache will expire in 60 seconds, but you have
+to consider that if you make a POST/PUT/PATCH and alter the data
+(or another system do), the cache will be inconsistent, because the cache
+is not updated automatically.
+
+Also take in consideration that the cache is saved in a key value store,
+and the key is the `uri` object passed to the GET call, so, if you make
+request passing parameters through header parameters instead of URI
+parameters, the cache system will be inconsistent with the real result.
+
+### Clear the cache manually
+
+if you need to clear the cache manually, you can call `deleteFromCache()`
+method, passing the URI as a key of the response to delete.
+The URI could be a string or an object in the same format as
+in the `get()` calls.
+
+```js
+// Delete the response cached in the example of the previous section
+client.deleteFromCache({ "uri": "orders", "query": {"state": "open", "limit": 10} })
+// This will delete the same value cached, but the URI is passed as a string
+client.deleteFromCache("orders?state=open&limit=10")
+```
+
+
 Requirements
 ------------
 
 - Node.js 4.4+ (supports Javascript classes).
 - `request` module.
+- `node-cache` if you use the cache features.
 
 
 About

@@ -107,6 +107,23 @@ class RequestClient {
     return this.request('DELETE', uri, undefined, headers);
   }
 
+  // Delete element from local cache. The uri is the Id of the
+  // response cached, and can be an string or an object like the
+  // `get()` calls.
+  deleteFromCache(uri) {
+    if (this.cache) {
+      var parsedUri = this._parseUri(uri);
+      var self = this;
+      this.cache.del(parsedUri, function(err, count) {
+        if(err) {
+          self.logger.error('Error deleting cache element "%s". %s', parsedUri, err);
+        }
+      });
+    } else {
+      // Nothing happens ...
+    }
+  }
+
   _doRequest(method, uri, data, headers) {
     var self = this;
     return new Promise(function(resolve, reject) {
