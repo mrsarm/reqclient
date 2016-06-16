@@ -62,14 +62,17 @@ following options:
 - `timeout` (optional) The TTL of the request
 - `contentType` (optional, default `json`) Content type, valid
   values: `json`, `form` or `formData`
-- `headers` (optional) object with default values to send as headers.
+- `headers` (optional) Object with default values to send as headers.
   Additional headers values can be added in the request
   call, even override these values
-- `cache` (optional, default false) if it's set to `true`,
+- `encodeQuery` (optional, default true) Encode query parameters
+  replacing "unsafe" characters in the URL with the corresponding
+  hexadecimal equivalent code (eg. `+` -> `%2B`)
+- `cache` (optional, default false) If it's set to `true`,
   adds cache support to GET requests
-- `debugRequest` (optional) if it's set to `true`, all requests
+- `debugRequest` (optional) If it's set to `true`, all requests
   will logged with `logger` object in a `cURL` style.
-- `debugResponse` (optional) if it's set to `true`, all responses
+- `debugResponse` (optional) If it's set to `true`, all responses
   will logged with `logger` object.
 - `logger` (optional, by default uses the `console` object)
   The logger used to log requests, responses and errors

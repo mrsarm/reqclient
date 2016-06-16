@@ -32,14 +32,17 @@ class RequestClient {
    * - timeout (optional) The TTL of the request
    * - contentType (optional, default `json`) Content type,
    *               valid values: `json`, `form` or `formData`
-   * - headers (optional) object with default values to send as headers.
+   * - headers (optional) Object with default values to send as headers.
    *           Additional headers values can be added in the request
    *           call, even override these values
-   * - cache (optional, default false) if it's set to `true`,
+   * - encodeQuery (optional, default true) Encode query parameters
+   *               replacing "unsafe" characters in the URL with the corresponding
+   *                hexadecimal equivalent code (eg. "+" -> "%2B")
+   * - cache (optional, default false) Ff it's set to `true`,
    *         adds cache support to GET requests
-   * - debugRequest (optional) if it's set to `true`, all requests
+   * - debugRequest (optional) If it's set to `true`, all requests
    *                will logged with `logger` object in a `cURL` style.
-   * - debugResponse (optional) if it's set to `true`, all responses
+   * - debugResponse (optional) If it's set to `true`, all responses
    *                 will logged with `logger` object
    * - logger (optional, by default uses the `console` object)
    *          The logger used to log requests, responses and errors
@@ -56,6 +59,7 @@ class RequestClient {
       this.debugResponse = config.debugResponse || false;
       this.logger = config.logger || console;
       this.headers = config.headers || {};
+      this.encodeQuery = config.encodeQuery!=undefined ? config.encodeQuery : true;
       if (config.cache) {
         this._initCache();
       }
@@ -181,7 +185,12 @@ class RequestClient {
       var query = [];
       if ("query" in uri && uri["query"]) {
         for (var k in uri["query"]) {
-          query.push(k + "=" + uri["query"][k]);
+          var value = uri["query"][k];
+          if (this.encodeQuery) {
+            value = value.replace("%", "%25").replace("+", "%2B").replace(" ", "%20").replace("?", "%3F")
+                         .replace(":", "%3A").replace("#", "%23").replace('"', "%22").replace("&", "%26");
+          }
+          query.push(k + "=" + value);
         }
       }
       if ("params" in uri && uri["params"]) {
@@ -215,7 +224,8 @@ class RequestClient {
       for (var k in options["headers"]) {
         curl += " -H '" + k + ":" + options["headers"][k] + "'";
       }
-      if ((!options["headers"] || !options["headers"]["Content-Type"]) && this.contentType=="json") {
+      if ((!options["headers"] || !options["headers"]["Content-Type"])
+            && this.contentType=="json" && options.method != 'GET' && options.method != 'DELETE') {
         curl += ' -H Content-Type:application/json'
       }
       if (this.timeout) {

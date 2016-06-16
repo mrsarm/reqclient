@@ -1,6 +1,6 @@
 {
   "name": "reqclient",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "reqclient uses `request` to make requests, but in an asynchronous way returning `Promise` objects",
   "author": "Mariano Ruiz <mrsarm@gmail.com> (http://www.mrdev.com.ar)",
   "contributors": [
