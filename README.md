@@ -18,7 +18,7 @@ but makes requests in an asynchronous way, returning
 objects to handle the responses without blocking
 the execution, and **removes boilerplate configurations** on each
 request: base URL, time out, content type format, default headers,
-and error handling.
+parameters and query binding in the URL, and error handling.
 
 Also support **in-memory cache** of GET responses, and allows to
 **log all operations** in `cURL` syntax style.

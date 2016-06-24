@@ -186,7 +186,7 @@ class RequestClient {
       if ("query" in uri && uri["query"]) {
         for (var k in uri["query"]) {
           var value = uri["query"][k];
-          if (this.encodeQuery) {
+          if (this.encodeQuery && typeof(value) == 'string') {
             value = value.replace("%", "%25").replace("+", "%2B").replace(" ", "%20").replace("?", "%3F")
                          .replace(":", "%3A").replace("#", "%23").replace('"', "%22").replace("&", "%26");
           }
