@@ -15,6 +15,7 @@
 'use strict';
 
 var request = require('request');
+var ReadStream = require("fs").ReadStream;
 
 /**
  * Wrapper class of the HTTP client module `request` that makes request
@@ -168,7 +169,14 @@ class RequestClient {
       }
     }
     if (data) {
-      options[this.contentType] = data;
+      if ("headers" in options && options["headers"]["Content-Type"]=="multipart/form-data") {
+        options["formData"] = data;
+      }
+      else if ("headers" in options && options["headers"]["Content-Type"]=="application/x-www-form-urlencoded") {
+        options["form"] = data;
+      } else {
+        options[this.contentType] = data;
+      }
     }
     if (this.timeout) {
       options["timeout"] = this.timeout
@@ -187,8 +195,7 @@ class RequestClient {
         for (var k in uri["query"]) {
           var value = uri["query"][k];
           if (this.encodeQuery && typeof(value) == 'string') {
-            value = value.replace("%", "%25").replace("+", "%2B").replace(" ", "%20").replace("?", "%3F")
-                         .replace(":", "%3A").replace("#", "%23").replace('"', "%22").replace("&", "%26");
+            value = encodeURIComponent(value);
           }
           query.push(k + "=" + value);
         }
@@ -214,12 +221,24 @@ class RequestClient {
       if (options.method != 'GET') {
         curl = '-X ' + options.method + ' ' + curl;
       }
-      if (options[this.contentType]) {
-        var data = options[this.contentType];
-        if (typeof(data)!='string' && this.contentType=="json") {
-          data = JSON.stringify(data);
+      if (options[this.contentType] || options["formData"] || options["form"]) {
+        var data = options[this.contentType] || options["formData"] || options["form"];
+        if (options["formData"] || options["form"]) {
+          for (k in data) {
+            var v = data[k];
+            if (v instanceof ReadStream) {
+              v = "@" + v.path;
+            } else if (typeof(v) != 'string') {
+              v = v.toString();
+            }
+            curl += " -F '" + k + "=" + v + "'";
+          }
+        } else {
+          if (typeof(data) != 'string' && this.contentType == "json") {
+            data = JSON.stringify(data);
+          }
+          curl += " -d '" + data + "'";
         }
-        curl += " -d '" + data + "'";
       }
       for (var k in options["headers"]) {
         curl += " -H '" + k + ":" + options["headers"][k] + "'";
