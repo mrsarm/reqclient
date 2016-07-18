@@ -159,6 +159,31 @@ client.deleteFromCache("orders?state=open&limit=10")
 ```
 
 
+Upload files
+------------
+
+To upload files, the `RequestClient` class has to be
+initialized with `contentType: 'formData'`. If it was
+initialized with `json` value (the default), it can be
+specified in the header POST parameter with the
+option `"Content-Type": "multipart/form-data"`.
+
+```js
+client.post("profile/upload-photo",
+            { "file": require("fs").createReadStream("mypic.jpg"), "id": 1234 },
+            {"Content-Type": "multipart/form-data"} )
+  .then(jsonResult => console.log("New photo URL: " + jsonResult.url))
+  .catch(err => console.log("Something goes wrong with the upload: " + err));
+```
+
+If the logging with cURL style is activated, it will log something
+like this:
+
+    [Requesting profile/upload-photo]-> -X POST http://localhost:8080/api/profile/upload-photo -F 'file=@mypic.jpg' -F 'id=1234' -H 'Content-Type:multipart/form-data'
+    [Response   profile/upload-photo]<- Status 200 - {"url":"http://localhost:8080/api/profile/43535342535/mypic.jpg", "success": true}
+    New photo URL: http://localhost:8080/api/profile/43535342535/mypic.jpg
+
+
 Requirements
 ------------
 
