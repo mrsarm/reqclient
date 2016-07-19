@@ -226,7 +226,9 @@ class RequestClient {
         if (options["formData"] || options["form"]) {
           for (k in data) {
             var v = data[k];
-            if (v instanceof ReadStream) {
+            if (v == null || v == undefined) {
+              v = "";
+            } else if (v instanceof ReadStream) {
               v = "@" + v.path;
             } else if (typeof(v) != 'string') {
               v = v.toString();

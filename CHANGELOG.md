@@ -2,6 +2,12 @@ reqclient CHANGELOG
 ===================
 
 
+1.2.1
+-----
+
+* Fixed formData debug with `null` values.
+
+
 1.2.0
 -----
 
