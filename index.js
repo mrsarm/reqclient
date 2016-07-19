@@ -163,9 +163,9 @@ class RequestClient {
     var options = {url: this.baseUrl + this._parseUri(uri)};
     if (headers || this.headers) {
       if (headers) {
-        options["headers"] = Object.assign(this.headers, headers);
+        options["headers"] = Object.assign({}, headers, this.headers);
       } else {
-        options["headers"] = this.headers;
+        options["headers"] = Object.assign({}, this.headers);
       }
     }
     if (data) {

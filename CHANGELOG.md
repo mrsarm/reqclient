@@ -2,6 +2,12 @@ reqclient CHANGELOG
 ===================
 
 
+1.2.2
+-----
+
+* Fixed mutable header issue.
+
+
 1.2.1
 -----
 
