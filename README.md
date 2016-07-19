@@ -5,7 +5,6 @@ reqclient - Node.js HTTP Client
 asynchronous way returning `Promise` objects, and adds useful features.
 
 Allows most common HTTP operations: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`.
-This module is in _development_ phase.
 
 
 Usage
@@ -116,11 +115,11 @@ or `debugResponse` to `true` in production environments.
 Cache
 -----
 
-By default `reqclient` don't cache results. You can activate cache
+By default `reqclient` doesn't cache results. You can activate cache
 of GET responses passing to its constructor config the
 option `cache: true`. Then, if you add the `ttl` parameter (in seconds)
 in a `get()` call, the module will cache the result to return the
-the same response the next call without accessing to the endpoint
+same response the next call without accessing to the endpoint
 again. If the `RequestClient` object isn't initialized with the
 `cache` option, the `ttl` parameter in the request calls will ignored.
 
@@ -163,14 +162,14 @@ Upload files
 ------------
 
 To upload files, the `RequestClient` class has to be
-initialized with `contentType: 'formData'`. If it was
-initialized with `json` value (the default), it can be
-specified in the header POST parameter with the
+initialized with `contentType: "formData"`. If it was
+initialized with `json` (the default value), the upload
+can be specified in the header POST parameter with the
 option `"Content-Type": "multipart/form-data"`.
 
 ```js
 client.post("profile/upload-photo",
-            { "file": require("fs").createReadStream("mypic.jpg"), "id": 1234 },
+            { "file": fs.createReadStream("mypic.jpg"), "id": 1234 },
             {"Content-Type": "multipart/form-data"} )
   .then(jsonResult => console.log("New photo URL: " + jsonResult.url))
   .catch(err => console.log("Something goes wrong with the upload: " + err));
@@ -180,7 +179,7 @@ If the logging with cURL style is activated, it will log something
 like this:
 
     [Requesting profile/upload-photo]-> -X POST http://localhost:8080/api/profile/upload-photo -F 'file=@mypic.jpg' -F 'id=1234' -H 'Content-Type:multipart/form-data'
-    [Response   profile/upload-photo]<- Status 200 - {"url":"http://localhost:8080/api/profile/43535342535/mypic.jpg", "success": true}
+    [Response   profile/upload-photo]<- Status 200 - {"url":"http://localhost:8080/api/profile/43535342535/mypic.jpg","success":true}
     New photo URL: http://localhost:8080/api/profile/43535342535/mypic.jpg
 
 
@@ -189,7 +188,7 @@ Requirements
 
 - Node.js 4.4+ (supports Javascript classes).
 - `request` module.
-- `node-cache` if you use the cache features.
+- `node-cache` if the cache features are used.
 
 
 About
