@@ -30,12 +30,17 @@ class RequestClient {
   /**
    * @param config A string with the the base URL, or an object with the following configuration:
    * - baseUrl The base URL for all the request
-   * - timeout (optional) The TTL of the request
+   * - timeout (optional) The TTL of the request in milliseconds
    * - contentType (optional, default `json`) Content type,
    *               valid values: `json`, `form` or `formData`
    * - headers (optional) Object with default values to send as headers.
    *           Additional headers values can be added in the request
    *           call, even override these values
+   * - auth (optional) HTTP Authentication options. The object must contain:
+   *   - user || username
+   *   - pass || password
+   *   - sendImmediately (optional)
+   *   - bearer (optional)
    * - encodeQuery (optional, default true) Encode query parameters
    *               replacing "unsafe" characters in the URL with the corresponding
    *                hexadecimal equivalent code (eg. "+" -> "%2B")
@@ -56,6 +61,9 @@ class RequestClient {
       }
       this.timeout = config.timeout;
       this.contentType = config.contentType || 'json';
+      if (config.auth) {
+        this.auth = config.auth;
+      }
       this.debugRequest = config.debugRequest || false;
       this.debugResponse = config.debugResponse || false;
       this.logger = config.logger || console;
@@ -181,6 +189,9 @@ class RequestClient {
     if (this.timeout) {
       options["timeout"] = this.timeout
     }
+    if (this.auth) {
+      options["auth"] = this.auth;
+    }
     return options;
   }
 
@@ -221,6 +232,13 @@ class RequestClient {
       if (options.method != 'GET') {
         curl = '-X ' + options.method + ' ' + curl;
       }
+      if (options.auth) {
+        if (options.auth.user || options.auth.username) {
+          curl += " -u ${USERNAME}:${PASSWORD}";
+        } else if (options.auth.bearer) {
+          curl += " -H 'Authorization: Bearer ${ACCESS_TOKEN}'";
+        }
+      }
       if (options[this.contentType] || options["formData"] || options["form"]) {
         var data = options[this.contentType] || options["formData"] || options["form"];
         if (options["formData"] || options["form"]) {
@@ -246,7 +264,8 @@ class RequestClient {
         curl += " -H '" + k + ":" + options["headers"][k] + "'";
       }
       if ((!options["headers"] || !options["headers"]["Content-Type"])
-            && this.contentType=="json" && options.method != 'GET' && options.method != 'DELETE') {
+            && this.contentType=="json" && options.method != 'GET' && options.method != 'DELETE'
+            && data!=undefined && data!=null) {
         curl += ' -H Content-Type:application/json'
       }
       if (this.timeout) {

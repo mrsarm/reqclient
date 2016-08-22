@@ -1,10 +1,8 @@
 reqclient - Node.js HTTP Client
 ===============================
 
-`reqclient` uses module`request` to make requests, but in an
-asynchronous way returning `Promise` objects, and adds useful features.
-
-Allows most common HTTP operations: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`.
+`reqclient` uses module`request` to make requests, but adds
+`Promise` supports, and many useful features.
 
 
 Usage
@@ -12,7 +10,7 @@ Usage
 
 The module provides the class `RequestClient`, a wrapper class of the
 HTTP client module [request](https://www.npmjs.com/package/request),
-but makes requests in an asynchronous way, returning
+but makes requests returning
 [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 objects to handle the responses without blocking
 the execution, and **removes boilerplate configurations** on each
@@ -50,6 +48,9 @@ client.delete({
 }).then(handler).catch(errorHanler);
 ```
 
+Allows most common HTTP operations: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`.
+
+
 Options
 -------
 
@@ -58,17 +59,26 @@ has to be passed as a parameter, or an object with the
 following options:
 
 - `baseUrl` The base URL for all the request
-- `timeout` (optional) The TTL of the request
+- `timeout` (optional) The TTL of the request in milliseconds
 - `contentType` (optional, default `json`) Content type, valid
   values: `json`, `form` or `formData`
 - `headers` (optional) Object with default values to send as headers.
   Additional headers values can be added in the request
   call, even override these values
+- auth (optional) [HTTP Authentication](#http-authentication) options.
+  The object must contain:
+    - user || username
+    - pass || password
+    - sendImmediately (optional)
+    - bearer (optional)
 - `encodeQuery` (optional, default true) Encode query parameters
   replacing "unsafe" characters in the URL with the corresponding
   hexadecimal equivalent code (eg. `+` -> `%2B`)
 - `cache` (optional, default false) If it's set to `true`,
-  adds cache support to GET requests
+  adds [cache](#cache) support to GET requests
+
+[Logging](#logging-with-curl-style) options:
+
 - `debugRequest` (optional) If it's set to `true`, all requests
   will logged with `logger` object in a `cURL` style.
 - `debugResponse` (optional) If it's set to `true`, all responses
@@ -181,6 +191,43 @@ like this:
     [Requesting profile/upload-photo]-> -X POST http://localhost:8080/api/profile/upload-photo -F 'file=@mypic.jpg' -F 'id=1234' -H 'Content-Type:multipart/form-data'
     [Response   profile/upload-photo]<- Status 200 - {"url":"http://localhost:8080/api/profile/43535342535/mypic.jpg","success":true}
     New photo URL: http://localhost:8080/api/profile/43535342535/mypic.jpg
+
+
+HTTP Authentication
+-------------------
+
+`reqclient` inherit the HTTP Authentication mechanism from the
+[request module](https://www.npmjs.com/package/request#http-authentication).
+
+The configuration is passed as an option parameter called `auth` in
+the constructor, and should be an object containing the values:
+
+- user || username
+- pass || password
+- sendImmediately (optional)
+- bearer (optional)
+
+`sendImmediately`: defaults to true, causes a basic or bearer
+authentication header to be sent. If sendImmediately is false, then
+request will retry with a proper authentication header after receiving
+a 401 response from the server (which must contain a `WWW-Authenticate`
+header indicating the required authentication method).
+
+Bearer authentication is supported, and is activated when the `bearer`
+value is available. The value may be either a String or a Function
+returning a String. Using a function to supply the bearer token is
+particularly useful if used in conjunction with defaults to allow a
+single function to supply the last known token at the time of sending
+a request, or to compute one on the fly.
+
+```js
+var client = new RequestClient({
+  baseUrl:"http://localhost:5000",
+  auth: {user: "admin", pass: "secret"}
+});
+
+client.get("orders").then(...)...
+```
 
 
 Requirements
