@@ -15,7 +15,8 @@ but makes requests returning
 objects to handle the responses without blocking
 the execution, and **removes boilerplate configurations** on each
 request: base URL, time out, content type format, default headers,
-parameters and query binding in the URL, and error handling.
+parameters and query binding in the URL, authentication,
+and error handling.
 
 Also support **in-memory cache** of GET responses, and allows to
 **log all operations** in `cURL` syntax style.
@@ -65,7 +66,7 @@ following options:
 - `headers` (optional) Object with default values to send as headers.
   Additional headers values can be added in the request
   call, even override these values
-- auth (optional) [HTTP Authentication](#http-authentication) options.
+- `auth` (optional) [HTTP Authentication](#http-authentication) options.
   The object must contain:
     - user || username
     - pass || password
@@ -77,7 +78,7 @@ following options:
 - `cache` (optional, default false) If it's set to `true`,
   adds [cache](#cache) support to GET requests
 
-[Logging](#logging-with-curl-style) options:
+**[Logging](#logging-with-curl-style) options**:
 
 - `debugRequest` (optional) If it's set to `true`, all requests
   will logged with `logger` object in a `cURL` style.
