@@ -15,7 +15,7 @@ but makes requests returning
 objects to handle the responses without blocking
 the execution, and **removes boilerplate configurations** on each
 request: base URL, time out, content type format, default headers,
-parameters and query binding in the URL, authentication,
+parameters and query formatting in the URL, authentication,
 and error handling.
 
 Also support **in-memory cache** of GET responses, and allows to
@@ -86,6 +86,77 @@ following options:
   will logged with `logger` object.
 - `logger` (optional, by default uses the `console` object)
   The logger used to log requests, responses and errors
+
+
+URL formatting
+--------------
+
+`reqclient` supports format the given URI on each call concatenating
+with the `baseUrl` provided in the constructor + query binding
+with a given object. This is useful mostly
+for two reasons: avoid **boilerplate formatting** and **URL injection**
+attacks when the URL parameters comes from a user form.
+
+In the first parameter of any call you can specify a simple URI string
+like this: `reports/sales`, and in the example if the `baseUrl`
+has the value `https://api.erp.example.com/v1`, then the final
+URL will be https://api.erp.example.com/v1/reports/sales.
+
+But if you want to provide some URL parameters to the previous example,
+and the data comes from a user form, the user can inject more
+parameters than the allowed by the system if you do a simple
+string concatenation. With `reqclient` module, you can format
+the URL from an object containing the URL and the parameters, it's
+more secure, easy, and `reqclient` also takes care of encode all
+characters of the parameters to generate a valid URL.
+
+Supposing your parameters are in an object at `req.query`:
+
+```js
+var client = new RequestClient("https://api.erp.example.com/v1");
+client.get({
+  "uri": "reports/sales",
+  "query": {
+    "location": req.query.location, //-> = "Buenos Aires"
+    "limit": req.query.limit,       //-> = "20"
+    "index": 0
+  }
+}).then(resp => { /* Do something with the response... */ });
+// GET to https://api.erp.example.com/v1/reports/sales?location=Buenos%20Aires&limit=20&index=0
+```
+
+In **REST services** is also useful to provide _resource parameters_ in
+the URI, like the ID of a client or an order number. This kind of URI are
+represented like this: `/path/{resourceId}/to/{anotherResourceId}`, and
+have the same issues: repetitive parsing and are exposed to URL injection.
+
+For the previous example, supposing you want just the sales of a given
+client and for a given "status":
+
+```js
+client.get({
+  "uri": "reports/{clientId}/sales/{status}",
+  "query": {
+    "location": req.query.location, //-> = "Güemes"
+    "limit": req.query.limit,       //-> = "20"
+    "index": 0
+  },
+  "params": {
+    "clientId": clientObj.id,       //-> "1234"
+    "status": "done"
+  }
+}).then(resp => { /* ... */ }).catch(err => /* Oh my God... */);
+// GET to https://api.erp.example.com/v1/reports/1234/sales/done?location=G%C3%BCemes&limit=20&index=0
+```
+
+Note that in both cases the _"location"_ parameter have blank spaces or
+diacritics characters than in the final URL they were encoded. You can
+avoid the URL parameter encoding passing to the `RequestClient` config
+option the value `encodeQuery: false` (default to true).
+
+When you make a call with a string, or an URI object containing
+the URI string, if the string starts with "http://" or "https://", then
+the concatenation with the `baseUrl` is avoided.
 
 
 Logging with cURL style
@@ -208,6 +279,15 @@ the constructor, and should be an object containing the values:
 - sendImmediately (optional)
 - bearer (optional)
 
+```js
+var client = new RequestClient({
+  baseUrl:"http://localhost:5000",
+  auth: {user: "admin", pass: "secret"}
+});
+
+client.get("orders").then(...)...
+```
+
 `sendImmediately`: defaults to true, causes a basic or bearer
 authentication header to be sent. If sendImmediately is false, then
 request will retry with a proper authentication header after receiving
@@ -220,15 +300,6 @@ returning a String. Using a function to supply the bearer token is
 particularly useful if used in conjunction with defaults to allow a
 single function to supply the last known token at the time of sending
 a request, or to compute one on the fly.
-
-```js
-var client = new RequestClient({
-  baseUrl:"http://localhost:5000",
-  auth: {user: "admin", pass: "secret"}
-});
-
-client.get("orders").then(...)...
-```
 
 
 Requirements

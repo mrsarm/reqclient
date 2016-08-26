@@ -168,7 +168,13 @@ class RequestClient {
 
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
   _prepareOptions(uri, headers, data) {
-    var options = {url: this.baseUrl + this._parseUri(uri)};
+    var options = {};
+    var parsedUri = this._parseUri(uri);
+    if (parsedUri.indexOf("http://")==0 || parsedUri.indexOf("https://")==0) {
+      options["url"] = parsedUri;
+    } else {
+      options["url"] = this.baseUrl + parsedUri;
+    }
     if (headers || this.headers) {
       if (headers) {
         options["headers"] = Object.assign({}, headers, this.headers);
