@@ -61,9 +61,6 @@ class RequestClient {
       }
       this.timeout = config.timeout;
       this.contentType = config.contentType || 'json';
-      if (config.auth) {
-        this.auth = config.auth;
-      }
       this.debugRequest = config.debugRequest || false;
       this.debugResponse = config.debugResponse || false;
       this.logger = config.logger || console;
@@ -71,6 +68,27 @@ class RequestClient {
       this.encodeQuery = config.encodeQuery!=undefined ? config.encodeQuery : true;
       if (config.cache) {
         this._initCache();
+      }
+
+      // HTTP Auth
+      if (config.auth) {
+        this.auth = config.auth;
+      }
+
+      // OAuth2
+      if (config.oauth2) {
+        this.oauth2 = Object.assign({}, config.oauth2);
+        this.oauth2.tokenEndpoint = config.oauth2.tokenEndpoint ? config.oauth2.tokenEndpoint : "token";
+        this.oauth2.grantType = config.oauth2.grantType ? config.oauth2.grantType : "client_credentials";
+
+        var oauth2Config = {};
+        oauth2Config.baseUrl = this.oauth2.baseUrl ? this.oauth2.baseUrl : this.baseUrl;
+        oauth2Config.contentType = this.oauth2.contentType ? this.oauth2.contentType : "formData";
+        oauth2Config.debugRequest = this.oauth2.debugRequest!=undefined ? this.oauth2.debugRequest : this.debugRequest;
+        oauth2Config.debugResponse = this.oauth2.debugResponse!=undefined ? this.oauth2.debugResponse : this.debugResponse;
+        oauth2Config.logger = this.oauth2.logger ? this.oauth2.logger : this.logger;
+        oauth2Config.auth = this.oauth2.auth ? this.oauth2.auth : this.auth;
+        this.oauth2._client = new RequestClient(oauth2Config);
       }
     } else {
       this.baseUrl = config;
@@ -137,23 +155,38 @@ class RequestClient {
     }
   }
 
+  _prepareOAuth2Token() {
+    var self = this;
+    if (!self.tokenData) {
+      return self.oauth2._client.post(self.oauth2.tokenEndpoint, {"grant_type": self.oauth2.grantType})
+        .then(function (tokenData) {
+          if (typeof(tokenData) == 'string') {
+            tokenData = JSON.parse(tokenData);
+          }
+          self.tokenData = tokenData;
+          return { "bearer": self.tokenData.access_token };
+        });
+    }
+    return Promise.resolve({ "bearer": self.tokenData.access_token} );
+  }
+
   _doRequest(method, uri, data, headers) {
     var self = this;
     return new Promise(function(resolve, reject) {
-      var options = self._prepareOptions(uri, headers, data);
-      options.method = method;
-      self._debugRequest(options, uri);
-      request(options, function(error, httpResponse, body) {
-        if (httpResponse && httpResponse.statusCode) {
-          self._debugResponse(uri, httpResponse.statusCode, body);
-        }
-        if (httpResponse && httpResponse.statusCode < 400) {
-          resolve(self._prepareResponseBody(body));       // Successful request
-        } else if (error) {
-          self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
-        } else {
-          reject(self._prepareResponseBody(body));        // The server response has status error, due mostly by a wrong client request
-        }
+      self._prepareOptions(method, uri, headers, data).then(function(options) {
+        self._debugRequest(options, uri);
+        request(options, function(error, httpResponse, body) {
+          if (httpResponse && httpResponse.statusCode) {
+            self._debugResponse(uri, httpResponse.statusCode, body);
+          }
+          if (httpResponse && httpResponse.statusCode < 400) {
+            resolve(self._prepareResponseBody(body));       // Successful request
+          } else if (error) {
+            self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
+          } else {
+            reject(self._prepareResponseBody(body));        // The server response has status error, due mostly by a wrong client request
+          }
+        });
       });
     });
   }
@@ -167,38 +200,51 @@ class RequestClient {
   }
 
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
-  _prepareOptions(uri, headers, data) {
-    var options = {};
-    var parsedUri = this._parseUri(uri);
-    if (parsedUri.indexOf("http://")==0 || parsedUri.indexOf("https://")==0) {
-      options["url"] = parsedUri;
-    } else {
-      options["url"] = this.baseUrl + parsedUri;
-    }
-    if (headers || this.headers) {
-      if (headers) {
-        options["headers"] = Object.assign({}, headers, this.headers);
+  _prepareOptions(method, uri, headers, data) {
+    var self = this;
+    return new Promise(function(resolve) {
+      var options = {};
+      options.method = method;
+      var parsedUri = self._parseUri(uri);
+      if (parsedUri.indexOf("http://") == 0 || parsedUri.indexOf("https://") == 0) {
+        options["url"] = parsedUri;
       } else {
-        options["headers"] = Object.assign({}, this.headers);
+        options["url"] = self.baseUrl + parsedUri;
       }
-    }
-    if (data) {
-      if ("headers" in options && options["headers"]["Content-Type"]=="multipart/form-data") {
-        options["formData"] = data;
+      if (headers || self.headers) {
+        if (headers) {
+          options["headers"] = Object.assign({}, headers, self.headers);
+        } else {
+          options["headers"] = Object.assign({}, self.headers);
+        }
       }
-      else if ("headers" in options && options["headers"]["Content-Type"]=="application/x-www-form-urlencoded") {
-        options["form"] = data;
+      if (data) {
+        if ("headers" in options && options["headers"]["Content-Type"] == "multipart/form-data") {
+          options["formData"] = data;
+        }
+        else if ("headers" in options && options["headers"]["Content-Type"] == "application/x-www-form-urlencoded") {
+          options["form"] = data;
+        } else {
+          options[self.contentType] = data;
+        }
+      }
+      if (self.timeout) {
+        options["timeout"] = self.timeout
+      }
+      if (self.auth) {
+        options["auth"] = self.auth;
+      }
+      resolve(options);
+    }).then(options => {
+      if (self.oauth2) {
+        return self._prepareOAuth2Token().then(auth => {
+          options.auth = auth;
+          return options;
+        });
       } else {
-        options[this.contentType] = data;
+        return options;
       }
-    }
-    if (this.timeout) {
-      options["timeout"] = this.timeout
-    }
-    if (this.auth) {
-      options["auth"] = this.auth;
-    }
-    return options;
+    });
   }
 
   // If the `uri` is an object like `{ "uri": "users/{id}", "params": {"id": 1234}, "query": {"summarize": true, "info": "sales"} }`,
@@ -292,7 +338,11 @@ class RequestClient {
       } else if (typeof(body)!='string') {
         body = JSON.stringify(body);
       }
-      this.logger.log("[Response   %s]<- Status %s - %s", typeof(uri)=='string'?uri:uri['uri'], status, body);
+      if (status<400) {
+        this.logger.log("[Response   %s]<- Status %s - %s", typeof(uri) == 'string' ? uri : uri['uri'], status, body);
+      } else {
+        this.logger.error("[Response   %s]<- Status %s - %s", typeof(uri) == 'string' ? uri : uri['uri'], status, body);
+      }
     }
   }
 
