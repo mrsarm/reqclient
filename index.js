@@ -163,6 +163,9 @@ class RequestClient {
           if (typeof(tokenData) == 'string') {
             tokenData = JSON.parse(tokenData);
           }
+          if (tokenData.token_type && tokenData.token_type.toLowerCase()!="bearer") {
+            throw new Error('Unknown token type "' + tokenData.token_type + '"');
+          }
           self.tokenData = tokenData;
           return { "bearer": self.tokenData.access_token };
         });
@@ -172,8 +175,8 @@ class RequestClient {
 
   _doRequest(method, uri, data, headers) {
     var self = this;
-    return new Promise(function(resolve, reject) {
-      self._prepareOptions(method, uri, headers, data).then(function(options) {
+    return self._prepareOptions(method, uri, headers, data).then(function(options) {
+      return new Promise(function(resolve, reject) {
         self._debugRequest(options, uri);
         request(options, function(error, httpResponse, body) {
           if (httpResponse && httpResponse.statusCode) {
