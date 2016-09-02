@@ -44,7 +44,7 @@ class RequestClient {
    * - oauth2 (optional) OAuth 2.0 Authorization options. The object must contain:
    *     - The same options than `config` object, otherwise inherit from `config` these options:
    *       baseUrl, timeout, debugRequest, debugResponse, logger, auth
-   *     - contentType (default 'formData')
+   *     - contentType (default 'form')
    *     - tokenEndpoint (default 'token' as recommended by the standard)
    *     - grantType (default 'client_credentials' if `oauth2.user` isn't provided, otherwise 'password')
    *     - user (optional) Object with the user authentication for a password grant type authentication. Should contains:
@@ -100,7 +100,7 @@ class RequestClient {
 
         var oauth2Config = {};
         oauth2Config.baseUrl = this.oauth2.baseUrl ? this.oauth2.baseUrl : this.baseUrl;
-        oauth2Config.contentType = this.oauth2.contentType ? this.oauth2.contentType : "formData";
+        oauth2Config.contentType = this.oauth2.contentType ? this.oauth2.contentType : "form";
         oauth2Config.debugRequest = this.oauth2.debugRequest!=undefined ? this.oauth2.debugRequest : this.debugRequest;
         oauth2Config.debugResponse = this.oauth2.debugResponse!=undefined ? this.oauth2.debugResponse : this.debugResponse;
         oauth2Config.logger = this.oauth2.logger ? this.oauth2.logger : this.logger;
@@ -179,7 +179,7 @@ class RequestClient {
 
   _prepareOAuth2Token() {
     // TODO: Add support to pass client_id/client_secret as body argument instead
-    //       of a HTTP Authentication header as suggested by the standard
+    //       of a HTTP Authentication header
     var self = this;
     if (!self.tokenData || (self._isTokenExpired() && !self.tokenData.refresh_token)) {
       // There is no token yet, or the token expired and there is no refresh_token
@@ -349,7 +349,8 @@ class RequestClient {
             } else if (["password","client_secret","access_token","refresh_token"].indexOf(k)>=0) {
               v = "${" + k.toUpperCase() + "}"; // hide sensitive data
             }
-            curl += " -F '" + k + "=" + v + "'";
+            curl += options["formData"] ? " -F '" : " -d '";
+            curl += k + "=" + v + "'";
           }
         } else {
           if (typeof(data) != 'string' && this.contentType == "json") {
