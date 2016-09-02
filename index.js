@@ -31,16 +31,25 @@ class RequestClient {
    * @param config A string with the the base URL, or an object with the following configuration:
    * - baseUrl The base URL for all the request
    * - timeout (optional) The TTL of the request in milliseconds
-   * - contentType (optional, default `json`) Content type,
-   *               valid values: `json`, `form` or `formData`
+   * - contentType (optional, default 'json') Content type,
+   *               valid values: 'json', 'form' or 'formData'
    * - headers (optional) Object with default values to send as headers.
    *           Additional headers values can be added in the request
    *           call, even override these values
    * - auth (optional) HTTP Authentication options. The object must contain:
-   *   - user || username
-   *   - pass || password
-   *   - sendImmediately (optional)
-   *   - bearer (optional)
+   *     - user || username
+   *     - pass || password
+   *     - sendImmediately (optional)
+   *     - bearer (optional)
+   * - oauth2 (optional) OAuth 2.0 Authorization options. The object must contain:
+   *     - The same options than `config` object, otherwise inherit from `config` these options:
+   *       baseUrl, timeout, debugRequest, debugResponse, logger, auth
+   *     - contentType (default 'formData')
+   *     - tokenEndpoint (default 'token' as recommended by the standard)
+   *     - grantType (default 'client_credentials' if `oauth2.user` isn't provided, otherwise 'password')
+   *     - user (optional) Object with the user authentication for a password grant type authentication. Should contains:
+   *         - username
+   *         - password
    * - encodeQuery (optional, default true) Encode query parameters
    *               replacing "unsafe" characters in the URL with the corresponding
    *                hexadecimal equivalent code (eg. "+" -> "%2B")
@@ -79,7 +88,15 @@ class RequestClient {
       if (config.oauth2) {
         this.oauth2 = Object.assign({}, config.oauth2);
         this.oauth2.tokenEndpoint = config.oauth2.tokenEndpoint ? config.oauth2.tokenEndpoint : "token";
-        this.oauth2.grantType = config.oauth2.grantType ? config.oauth2.grantType : "client_credentials";
+        if (config.oauth2.grantType) {
+          this.oauth2.grantType = config.oauth2.grantType;
+        }
+        if (config.oauth2.user) { // This object should have "username" and "password" fields
+          this.oauth2.user = config.oauth2.user;
+          if (!this.oauth2.grantType) this.oauth2.grantType = "password";
+        } else if (!this.oauth2.grantType) {
+          this.oauth2.grantType = "client_credentials";
+        }
 
         var oauth2Config = {};
         oauth2Config.baseUrl = this.oauth2.baseUrl ? this.oauth2.baseUrl : this.baseUrl;
@@ -88,6 +105,7 @@ class RequestClient {
         oauth2Config.debugResponse = this.oauth2.debugResponse!=undefined ? this.oauth2.debugResponse : this.debugResponse;
         oauth2Config.logger = this.oauth2.logger ? this.oauth2.logger : this.logger;
         oauth2Config.auth = this.oauth2.auth ? this.oauth2.auth : this.auth;
+        oauth2Config.timeout = this.oauth2.timeout ? this.oauth2.timeout : this.timeout;
         this.oauth2._client = new RequestClient(oauth2Config);
       }
     } else {
@@ -155,22 +173,45 @@ class RequestClient {
     }
   }
 
+  _isTokenExpired() {
+    return !this.tokenData.expires_in || new Date() > this.tokenData._exp;
+  }
+
   _prepareOAuth2Token() {
+    // TODO: Add support to pass client_id/client_secret as body argument instead
+    //       of a HTTP Authentication header as suggested by the standard
     var self = this;
-    if (!self.tokenData) {
-      return self.oauth2._client.post(self.oauth2.tokenEndpoint, {"grant_type": self.oauth2.grantType})
-        .then(function (tokenData) {
-          if (typeof(tokenData) == 'string') {
-            tokenData = JSON.parse(tokenData);
-          }
-          if (tokenData.token_type && tokenData.token_type.toLowerCase()!="bearer") {
-            throw new Error('Unknown token type "' + tokenData.token_type + '"');
-          }
-          self.tokenData = tokenData;
-          return { "bearer": self.tokenData.access_token };
-        });
+    if (!self.tokenData || (self._isTokenExpired() && !self.tokenData.refresh_token)) {
+      // There is no token yet, or the token expired and there is no refresh_token
+      return self.oauth2._client.post(
+              self.oauth2.tokenEndpoint,
+              Object.assign({"grant_type": self.oauth2.grantType}, self.oauth2.user)
+        )
+        .then(tokenData => self._processToken(tokenData));
     }
+    else if (self._isTokenExpired() && self.tokenData.refresh_token) {
+      // The token expired and there is a refresh_token
+      return self.oauth2._client.post(
+              self.oauth2.tokenEndpoint,
+              {"grant_type": "refresh_token", "refresh_token": self.tokenData.refresh_token})
+        .then(tokenData => self._processToken(tokenData));
+    }
+    // Return the valid token
     return Promise.resolve({ "bearer": self.tokenData.access_token} );
+  }
+
+  _processToken(tokenData) {
+    if (typeof(tokenData) == 'string') {
+      tokenData = JSON.parse(tokenData);
+    }
+    if (tokenData.token_type && tokenData.token_type.toLowerCase()!="bearer") {
+      throw new Error('Unknown token type "' + tokenData.token_type + '"');
+    }
+    this.tokenData = tokenData;
+    if (this.tokenData.expires_in) {
+      this.tokenData._exp = new Date(new Date().getTime() + (this.tokenData.expires_in * 1000));
+    }
+    return { "bearer": this.tokenData.access_token };
   }
 
   _doRequest(method, uri, data, headers) {
@@ -221,7 +262,7 @@ class RequestClient {
           options["headers"] = Object.assign({}, self.headers);
         }
       }
-      if (data) {
+      if (data!=undefined) {
         if ("headers" in options && options["headers"]["Content-Type"] == "multipart/form-data") {
           options["formData"] = data;
         }
@@ -289,7 +330,7 @@ class RequestClient {
       }
       if (options.auth) {
         if (options.auth.user || options.auth.username) {
-          curl += " -u ${USERNAME}:${PASSWORD}";
+          curl += " -u ${CLIENT_ID}:${CLIENT_SECRET}";
         } else if (options.auth.bearer) {
           curl += " -H 'Authorization: Bearer ${ACCESS_TOKEN}'";
         }
@@ -305,6 +346,8 @@ class RequestClient {
               v = "@" + v.path;
             } else if (typeof(v) != 'string') {
               v = v.toString();
+            } else if (["password","client_secret","access_token","refresh_token"].indexOf(k)>=0) {
+              v = "${" + k.toUpperCase() + "}"; // hide sensitive data
             }
             curl += " -F '" + k + "=" + v + "'";
           }
