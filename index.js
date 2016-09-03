@@ -173,15 +173,16 @@ class RequestClient {
     }
   }
 
-  _isTokenExpired() {
+  _isTokenExpired(ignoreExpiration) {
+    if (ignoreExpiration==true) return true;
     return !this.tokenData.expires_in || new Date() > this.tokenData._exp;
   }
 
-  _prepareOAuth2Token() {
+  _prepareOAuth2Token(ignoreExpiration) {
     // TODO: Add support to pass client_id/client_secret as body argument instead
     //       of a HTTP Authentication header
     var self = this;
-    if (!self.tokenData || (self._isTokenExpired() && !self.tokenData.refresh_token)) {
+    if (!self.tokenData || (self._isTokenExpired(ignoreExpiration) && !self.tokenData.refresh_token)) {
       // There is no token yet, or the token expired and there is no refresh_token
       return self.oauth2._client.post(
               self.oauth2.tokenEndpoint,
@@ -189,7 +190,7 @@ class RequestClient {
         )
         .then(tokenData => self._processToken(tokenData));
     }
-    else if (self._isTokenExpired() && self.tokenData.refresh_token) {
+    else if (self._isTokenExpired(ignoreExpiration) && self.tokenData.refresh_token) {
       // The token expired and there is a refresh_token
       return self.oauth2._client.post(
               self.oauth2.tokenEndpoint,
@@ -220,19 +221,48 @@ class RequestClient {
       return new Promise(function(resolve, reject) {
         self._debugRequest(options, uri);
         request(options, function(error, httpResponse, body) {
-          if (httpResponse && httpResponse.statusCode) {
-            self._debugResponse(uri, httpResponse.statusCode, body);
-          }
-          if (httpResponse && httpResponse.statusCode < 400) {
-            resolve(self._prepareResponseBody(body));       // Successful request
-          } else if (error) {
-            self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
-          } else {
-            reject(self._prepareResponseBody(body));        // The server response has status error, due mostly by a wrong client request
-          }
+          self._handleResponse(error, httpResponse, body,
+                               method, uri, data, headers, options,
+                               resolve, reject);
         });
       });
     });
+  }
+
+  _handleResponse(error, httpResponse, body,            // Response
+                  method, uri, data, headers, options,  // Input given
+                  resolve, reject,                      // Resolvers
+                  ignoreAuthError)                      // Ignore 'WWW-Authenticate' header ¿?
+  {
+    var self = this;
+    if (error) {
+      return self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
+    }
+    if (httpResponse.statusCode) {
+      self._debugResponse(uri, httpResponse.statusCode, body);
+    }
+    if (httpResponse.statusCode < 400) {
+      return resolve(self._prepareResponseBody(body));       // Successful request
+    }
+    if (httpResponse.statusCode==401
+                      && httpResponse.headers["www-authenticate"]
+                      && httpResponse.headers["www-authenticate"].toLowerCase().indexOf("bearer")==0) {
+
+      if (ignoreAuthError) {
+        return reject(self._prepareResponseBody(body));
+      }
+      return resolve(self._prepareOAuth2Token(true)
+        .then(function (token) {
+          options.auth = token;
+          request(options, function (error, httpResponse, body) {
+            self._handleResponse(error, httpResponse, body,
+              method, uri, data, headers, options,
+              resolve, reject, true);
+          });
+        })
+      );
+    }
+    return reject(self._prepareResponseBody(body));        // The server response has status error, due mostly by a wrong client request
   }
 
   // If the response body is a JSON -> parse it to return as a JSON object.

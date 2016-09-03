@@ -72,6 +72,20 @@ following options:
     - pass || password
     - sendImmediately (optional)
     - bearer (optional)
+- `oauth2` (optional) [OAuth 2 Authorization](#oauth-2-authorization) options.
+  The object must contain:
+    - The same options than `config` object, otherwise inherit
+      from `config` these options: `baseUrl`, `timeout`, `debugRequest`,
+      `debugResponse`, `logger`, `auth`
+    - `contentType` (default `form`)
+    - `tokenEndpoint` (default `token` as recommended by the standard)
+    - grantType (default `client_credentials` if `oauth2.user` isn't
+      provided, otherwise `password`) The `grant_type` parameter provider
+      to the endpoint to specify the authentication type
+    - `user` (optional) Object with the user authentication information
+      for a password grant type authentication. Should contains:
+        - username
+        - password
 - `encodeQuery` (optional, default true) Encode query parameters
   replacing "unsafe" characters in the URL with the corresponding
   hexadecimal equivalent code (eg. `+` -> `%2B`)
@@ -300,6 +314,99 @@ returning a String. Using a function to supply the bearer token is
 particularly useful if used in conjunction with defaults to allow a
 single function to supply the last known token at the time of sending
 a request, or to compute one on the fly.
+
+
+OAuth 2 Authorization
+---------------------
+
+There are many ways to login against an OAuth 2.0 server, this library
+implements some mechanisms.
+
+The options for the constructor object to configure OAuth2 are set in
+the object `oauth2`, and because the server where you will authenticate
+could be the same server you will consume endpoints or not, this objects
+can receive the same global options than the constructor: `baseUrl`,
+`timeout`, `auth`, `debugRequest`, ... If these options aren't provided,
+they will taken from the global options.
+
+When you configure the OAuth2 options, `reqclient` will try to login
+with the OAuth2 endpoint before consume any endpoint to get the **access
+token**, and if a **refresh token** is provided, it will manage the
+refreshing of the access token automatically for you.
+
+Also if for some reason your token was invalidated before the expiration
+time, but an appropriate `WWW-Authenticate` header is provided in a
+response (as it specified by the standard), `reqclient` will try
+authenticate one more time automatically.
+
+
+### `client_credentials` grant type
+
+```js
+var client = new RequestClient({
+  baseUrl: "http://localhost:8080/myapi" ,debugRequest:true
+  ,oauth2: {
+    auth: {
+      user: 'client123'       // The username, also called "client_id"
+      ,pass: 'thePass123'     // The password, also called "client_secret"
+    }
+  }
+});
+
+client.get("home-reports");   // First will try to login with OAuth2, then /home-reports 
+client.get("messages");       // Will reuse the previous token obtained
+```
+
+The code above will log this:
+
+    [Requesting token]-> -X POST http://localhost:8080/myapi/token -u ${CLIENT_ID}:${CLIENT_SECRET} -d 'grant_type=client_credentials'
+    [Requesting home-reports]-> http://localhost:8080/myapi/home-reports -H 'Authorization: Bearer ${ACCESS_TOKEN}'
+    [Requesting messages]-> http://localhost:8080/myapi/messages -H 'Authorization: Bearer ${ACCESS_TOKEN}'
+
+As you can see, the first operation was get the token against an
+endpoint `/token`, then the call to `/home-reports` was made
+with the "bearer" token obtained in the first call, and finally
+a new call to `/messages` was made also using the same token.
+
+The default endpoint `/token` can be changed in the `oauth2.tokenEndpoint`
+config object, and also the `baseUrl` used only for the OAuth2 calls:
+
+```js
+  ...
+  ,oauth2: {
+    baseUrl: 'https://api.example.com/oauth2'
+    ,tokenEndpoint: 'login'
+    ,auth: {user: 'client123', pass: 'thePass123'}
+  } // OAuth against POST https://api.example.com/oauth2/login -u client123:thePass123 ...
+  ...
+```
+
+
+### `password` grant type
+
+To authenticate against an OAuth 2 server with a _username/password + client_id/client_secret_
+must be set the in a `user` object inside the `oauth2` object with the
+username and password:
+
+```js
+var client = new RequestClient({
+  baseUrl: "http://localhost:8080/myapi" ,debugRequest:true
+  ,oauth2: {
+    auth: {
+      user: 'client123'             // client_id
+      ,pass: 'thePass123'           // client_secret
+    }
+    ,user: {
+      username: "myname@mail.com"   // The user of a "real" user
+      ,password: "password1234"
+    }
+  }
+});
+```
+
+This will log in _cURL_ format something like this:
+
+    [Requesting token]-> -X POST http://localhost:8080/myapi/token -u ${CLIENT_ID}:${CLIENT_SECRET} -d 'grant_type=password' -d 'username=myname@mail.com' -d 'password=${PASSWORD}'
 
 
 Requirements
