@@ -2,6 +2,28 @@ reqclient CHANGELOG
 ===================
 
 
+2.0.0
+-----
+
+* Added HTTP Authentication support.
+* Added OAuth2 Authentication support.
+* Added full URL parameter support on each call.
+* If `debugResponse` is activated and a response has
+  HTTP Status >= 400 it will log with `error` severity.
+* Added an optional parameter `options` to all public method
+  to override the default options.
+
+### Backward incompatible changes
+
+* `_prepareOptions()` method now builds the request options in
+  async mode returning a `Promise`, useful to add options obtained
+  from external resources without blocking the execution, like an
+  access token from an OAuth server.
+* The new `options` parameter replace the `cacheTtl` parameter
+  in the `get()` method. Now this parameter is a optional property
+  inside the `options` parameter (eg. `{cacheTtl: 60, ...}`).
+
+
 1.2.2
 -----
 

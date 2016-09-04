@@ -36,7 +36,7 @@ client.get("reports/clients")
   });
 
 // POST with JSON body and headers
-var p = client.post("order", {"client": 1234, "ref_id": "A987"}, {"x-token": "AFF01XX"})
+var p = client.post("order", {"client": 1234, "ref_id": "A987"}, {headers: {"x-token": "AFF01XX"}})
 // Do something with the Promise `p` ...
 
 // GET with query (http://baseurl.com/api/orders?state=open&limit=10)
@@ -100,6 +100,14 @@ following options:
   will logged with `logger` object.
 - `logger` (optional, by default uses the `console` object)
   The logger used to log requests, responses and errors
+
+The options `timeout`, `headers`, `auth` and `encodeQuery`
+can be overridden when you make a call passing in an object as a
+last argument:
+
+```js
+client.patch("patch", {"name":"Mika"}, {headers: {"x-token": "fake_token"}, timeout: 5000});
+```
 
 
 URL formatting
@@ -193,7 +201,7 @@ var client = new RequestClient({
         debugRequest: true, debugResponse: true
     });
 
-client.post("client/orders", {"client": 1234, "ref_id": "A987"}, {"x-token": "AFF01XX"})
+client.post("client/orders", {"client": 1234, "ref_id": "A987"}, {headers: {"x-token": "AFF01XX"}})
 /* This will log ...
 [Requesting client/orders]-> -X POST http://baseurl.com/api/v1.1/client/orders -d '{"client": 1234, "ref_id": "A987"}' -H '{"x-token": "AFF01XX"}' -H Content-Type:application/json
 And when the response is returned ...
@@ -213,17 +221,20 @@ Cache
 
 By default `reqclient` doesn't cache results. You can activate cache
 of GET responses passing to its constructor config the
-option `cache: true`. Then, if you add the `ttl` parameter (in seconds)
+option `cache: true`. Then, if you add the `{cacheTtl: SECONDS}` option
 in a `get()` call, the module will cache the result to return the
 same response the next call without accessing to the endpoint
 again. If the `RequestClient` object isn't initialized with the
-`cache` option, the `ttl` parameter in the request calls will ignored.
+`cache` option, the `cacheTtl` option in the request calls will ignored.
 
 ```js
 var client = new RequestClient({baseUrl:"https://myapp.com/api/v1", cache:true});
 // GET to "https://myapp.com/api/v1/orders?state=open&limit=10" and cache for 60 seconds 
-client.get({ "uri": "orders", "query": {"state": "open", "limit": 10} }, {}, 60 /* seconds */)
+client.get({ "uri": "orders", "query": {"state": "open", "limit": 10} }, {cacheTtl: 60})
 ```
+
+**NOTE**: In subsequence calls the response will be read from the cache only if
+the `cacheTtl` option is present in the request.
 
 This library use the `node-cache` module to create the _in-memory_
 cache. If you activate this feature, you need to add this dependency in your
@@ -232,7 +243,7 @@ project.
 In the example above, the cache will expire in 60 seconds, but you have
 to consider that if you make a POST/PUT/PATCH and alter the data
 (or another system do), the cache will be inconsistent, because the cache
-is not updated automatically.
+is not updated automatically (see bellow how to clean the cache).
 
 Also take in consideration that the cache is saved in a key value store,
 and the key is the `uri` object passed to the GET call, so, if you make
@@ -259,14 +270,14 @@ Upload files
 
 To upload files, the `RequestClient` class has to be
 initialized with `contentType: "formData"`. If it was
-initialized with `json` (the default value), the upload
+initialized with `json` (the default value), in the upload call
 can be specified in the header POST parameter with the
 option `"Content-Type": "multipart/form-data"`.
 
 ```js
 client.post("profile/upload-photo",
             { "file": fs.createReadStream("mypic.jpg"), "id": 1234 },
-            {"Content-Type": "multipart/form-data"} )
+            { "headers": {"Content-Type": "multipart/form-data"} } )
   .then(jsonResult => console.log("New photo URL: " + jsonResult.url))
   .catch(err => console.log("Something goes wrong with the upload: " + err));
 ```

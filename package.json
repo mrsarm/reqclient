@@ -1,6 +1,6 @@
 {
   "name": "reqclient",
-  "version": "1.2.2",
+  "version": "2.0.0",
   "description": "reqclient uses 'request' to make requests, but adds 'Promise' supports, and many useful features",
   "author": "Mariano Ruiz <mrsarm@gmail.com> (http://www.mrdev.com.ar)",
   "contributors": [
