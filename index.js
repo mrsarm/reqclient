@@ -113,11 +113,11 @@ class RequestClient {
     }
   }
 
-  request(method, uri, data, headers, cacheTtl /* sec */) {
-    if (this.cache && method=='GET' && cacheTtl!=undefined) {
+  request(method, uri, data, options) {
+    if (this.cache && method=='GET' && options && options.cacheTtl!=undefined) {
       var self = this;
       return new Promise(function(resolve, reject) {
-        var parsedUri = self._parseUri(uri);
+        var parsedUri = self._parseUri(uri, options);
         self.cache.get(parsedUri, function (err, value) {
           if (!err) {
             if (value!=undefined) {
@@ -125,9 +125,13 @@ class RequestClient {
               resolve(value);
             } else {
               // Do the request and save the result in the cache before returns (anyway returns in async way the promise)
-              resolve(self._doRequest(method, uri, undefined, headers).then(function(result) {
-                self.cache.set(parsedUri, result, cacheTtl,
-                  (err, success) => { if (err || !success) self.logger.error('Error saving "%s" in cache. %s', parsedUri, err) });
+              resolve(self._doRequest(method, uri, undefined, options).then(function(result) {
+                if (typeof(options.cacheTtl)=='number') {
+                  self.cache.set(parsedUri, result, options.cacheTtl, function(err, success) {
+                      if (err || !success)
+                        self.logger.error('Error saving "%s" in cache. %s', parsedUri, err)
+                    });
+                }
                 return result;
               }));
             }
@@ -137,23 +141,23 @@ class RequestClient {
         });
       });
     } else {
-      return this._doRequest(method, uri, data, headers);
+      return this._doRequest(method, uri, data, options);
     }
   }
-  get(uri, headers, cacheTtl) {
-    return this.request('GET', uri, undefined, headers, cacheTtl);
+  get(uri, options) {
+    return this.request('GET', uri, undefined, options);
   }
-  post(uri, data, headers) {
-    return this.request('POST', uri, data, headers);
+  post(uri, data, options) {
+    return this.request('POST', uri, data, options);
   }
-  patch(uri, data, headers) {
-    return this.request('PATCH', uri, data, headers);
+  patch(uri, data, options) {
+    return this.request('PATCH', uri, data, options);
   }
-  put(uri, data, headers) {
-    return this.request('PUT', uri, data, headers);
+  put(uri, data, options) {
+    return this.request('PUT', uri, data, options);
   }
-  delete(uri, headers) {
-    return this.request('DELETE', uri, undefined, headers);
+  delete(uri, options) {
+    return this.request('DELETE', uri, undefined, options);
   }
 
   // Delete element from local cache. The uri is the Id of the
@@ -215,36 +219,34 @@ class RequestClient {
     return { "bearer": this.tokenData.access_token };
   }
 
-  _doRequest(method, uri, data, headers) {
+  _doRequest(method, uri, data, options) {
     var self = this;
-    return self._prepareOptions(method, uri, headers, data).then(function(options) {
+    return self._prepareReqOptions(method, uri, data, options).then(function(reqOptions) {
       return new Promise(function(resolve, reject) {
-        self._debugRequest(options, uri);
-        request(options, function(error, httpResponse, body) {
+        self._debugRequest(reqOptions, uri);
+        request(reqOptions, function(error, httpResponse, body) {
           self._handleResponse(error, httpResponse, body,
-                               method, uri, data, headers, options,
+                               method, uri, data, reqOptions,
                                resolve, reject);
         });
       });
     });
   }
 
-  _handleResponse(error, httpResponse, body,            // Response
-                  method, uri, data, headers, options,  // Input given
-                  resolve, reject,                      // Resolvers
-                  ignoreAuthError)                      // Ignore 'WWW-Authenticate' header ¿?
+  _handleResponse(error, httpResponse, body,      // Response
+                  method, uri, data, reqOptions,  // Input given
+                  resolve, reject,                // Resolvers
+                  ignoreAuthError)                // Ignore 'WWW-Authenticate' header ¿?
   {
     var self = this;
     if (error) {
-      return self._handleError(error, uri, options, reject); // Fatal client or server error (unreachable server, time out...)
+      return self._handleError(error, uri, reqOptions, reject); // Fatal client or server error (unreachable server, time out...)
     }
-    if (httpResponse.statusCode) {
-      self._debugResponse(uri, httpResponse.statusCode, body);
-    }
+    self._debugResponse(uri, httpResponse.statusCode, body);
     if (httpResponse.statusCode < 400) {
       return resolve(self._prepareResponseBody(body));       // Successful request
     }
-    if (httpResponse.statusCode==401
+    if (httpResponse.statusCode==401 && self.oauth2
                       && httpResponse.headers["www-authenticate"]
                       && httpResponse.headers["www-authenticate"].toLowerCase().indexOf("bearer")==0) {
 
@@ -253,10 +255,11 @@ class RequestClient {
       }
       return resolve(self._prepareOAuth2Token(true)
         .then(function (token) {
-          options.auth = token;
-          request(options, function (error, httpResponse, body) {
+          reqOptions.auth = token;
+          self._debugRequest(reqOptions, uri);
+          request(reqOptions, function (error, httpResponse, body) {
             self._handleResponse(error, httpResponse, body,
-              method, uri, data, headers, options,
+              method, uri, data, reqOptions,
               resolve, reject, true);
           });
         })
@@ -274,64 +277,69 @@ class RequestClient {
   }
 
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
-  _prepareOptions(method, uri, headers, data) {
+  _prepareReqOptions(method, uri, data, options) {
     var self = this;
     return new Promise(function(resolve) {
-      var options = {};
-      options.method = method;
-      var parsedUri = self._parseUri(uri);
+      var reqOptions = {};
+      reqOptions.method = method;
+      var parsedUri = self._parseUri(uri, options);
       if (parsedUri.indexOf("http://") == 0 || parsedUri.indexOf("https://") == 0) {
-        options["url"] = parsedUri;
+        reqOptions["url"] = parsedUri;
       } else {
-        options["url"] = self.baseUrl + parsedUri;
+        reqOptions["url"] = self.baseUrl + parsedUri;
       }
-      if (headers || self.headers) {
-        if (headers) {
-          options["headers"] = Object.assign({}, headers, self.headers);
+      if ((options && options.headers) || self.headers) {
+        if (options && options.headers) {
+          reqOptions["headers"] = Object.assign({}, self.headers, options.headers);
         } else {
-          options["headers"] = Object.assign({}, self.headers);
+          reqOptions["headers"] = Object.assign({}, self.headers);
         }
       }
       if (data!=undefined) {
-        if ("headers" in options && options["headers"]["Content-Type"] == "multipart/form-data") {
-          options["formData"] = data;
+        if ("headers" in reqOptions && reqOptions["headers"]["Content-Type"] == "multipart/form-data") {
+          reqOptions["formData"] = data;
         }
-        else if ("headers" in options && options["headers"]["Content-Type"] == "application/x-www-form-urlencoded") {
-          options["form"] = data;
+        else if ("headers" in reqOptions && reqOptions["headers"]["Content-Type"] == "application/x-www-form-urlencoded") {
+          reqOptions["form"] = data;
         } else {
-          options[self.contentType] = data;
+          reqOptions[self.contentType] = data;
         }
       }
-      if (self.timeout) {
-        options["timeout"] = self.timeout
+      if (options && options.timeout) {
+        reqOptions["timeout"] = options.timeout
+      } else if (self.timeout) {
+        reqOptions["timeout"] = self.timeout
       }
-      if (self.auth) {
-        options["auth"] = self.auth;
+      if (options && options.auth) {
+        reqOptions["auth"] = options.auth
+      } else if (self.auth) {
+        reqOptions["auth"] = self.auth;
       }
-      resolve(options);
-    }).then(options => {
+      resolve(reqOptions);
+    }).then(reqOptions => {
       if (self.oauth2) {
         return self._prepareOAuth2Token().then(auth => {
-          options.auth = auth;
-          return options;
+          reqOptions.auth = auth;
+          return reqOptions;
         });
       } else {
-        return options;
+        return reqOptions;
       }
     });
   }
 
   // If the `uri` is an object like `{ "uri": "users/{id}", "params": {"id": 1234}, "query": {"summarize": true, "info": "sales"} }`,
   // parse it as a full URI string: "users/1234?summarize=true&info=sales"
-  _parseUri(uri) {
+  _parseUri(uri, options) {
     var uriOpt = uri;
     if (typeof(uri)=='object') {
       uriOpt = Object.assign({}, uri);
       var query = [];
       if ("query" in uri && uri["query"]) {
+        var encodeQuery = options!=undefined && options.encodeQuery!=undefined ? options.encodeQuery : this.encodeQuery;
         for (var k in uri["query"]) {
           var value = uri["query"][k];
-          if (this.encodeQuery && typeof(value) == 'string') {
+          if (encodeQuery && typeof(value) == 'string') {
             value = encodeURIComponent(value);
           }
           query.push(k + "=" + value);
@@ -397,8 +405,8 @@ class RequestClient {
             && data!=undefined && data!=null) {
         curl += ' -H Content-Type:application/json'
       }
-      if (this.timeout) {
-        curl += ' --connect-timeout ' + (this.timeout / 1000.0); // ms to sec
+      if (options.timeout) {
+        curl += ' --connect-timeout ' + (options.timeout / 1000.0); // ms to sec
       }
       if (typeof(uri)!='string') {
         uri = uri["uri"];
