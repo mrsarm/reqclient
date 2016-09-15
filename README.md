@@ -343,11 +343,12 @@ they will taken from the global options.
 When you configure the OAuth2 options, `reqclient` will try to login
 with the OAuth2 endpoint before consume any endpoint to get the **access
 token**, and if a **refresh token** is provided, it will manage the
-refreshing of the access token automatically for you.
+refreshing of the access token automatically for you, or refresh it
+using the same grant type method used first.
 
 Also if for some reason your token was invalidated before the expiration
 time, but an appropriate `WWW-Authenticate` header is provided in a
-response (as it specified by the standard), `reqclient` will try
+response (as it's specified by the standard), `reqclient` will try
 authenticate one more time automatically.
 
 
@@ -358,14 +359,14 @@ var client = new RequestClient({
   baseUrl: "http://localhost:8080/myapi" ,debugRequest:true
   ,oauth2: {
     auth: {
-      user: 'client123'       // The username, also called "client_id"
-      ,pass: 'thePass123'     // The password, also called "client_secret"
+      user: 'client123'         // The username, also called "client_id"
+      ,pass: 'thePass123'       // The password, also called "client_secret"
     }
   }
 });
 
-client.get("home-reports");   // First will try to login with OAuth2, then /home-reports 
-client.get("messages");       // Will reuse the previous token obtained
+client.get("home-reports")      // First will try to login with OAuth2, then /home-reports 
+.then(client.get("messages"));  // Will reuse the previous token obtained
 ```
 
 The code above will log this:
@@ -395,8 +396,8 @@ config object, and also the `baseUrl` used only for the OAuth2 calls:
 
 ### `password` grant type
 
-To authenticate against an OAuth 2 server with a _username/password + client_id/client_secret_
-must be set the in a `user` object inside the `oauth2` object with the
+To authenticate against an OAuth 2 server with a _username/password + client_id/client_secret_,
+the credentials must be set the in a `user` object inside the `oauth2` object with the
 username and password:
 
 ```js
