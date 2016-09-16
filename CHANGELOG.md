@@ -2,6 +2,12 @@ reqclient CHANGELOG
 ===================
 
 
+2.0.1
+-----
+
+* Fixed quote character used when system environment variables are
+  used in _cURL_ logging.
+
 2.0.0
 -----
 

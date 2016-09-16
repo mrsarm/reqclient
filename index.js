@@ -370,25 +370,28 @@ class RequestClient {
         if (options.auth.user || options.auth.username) {
           curl += " -u ${CLIENT_ID}:${CLIENT_SECRET}";
         } else if (options.auth.bearer) {
-          curl += " -H 'Authorization: Bearer ${ACCESS_TOKEN}'";
+          curl += ' -H "Authorization: Bearer ${ACCESS_TOKEN}"';
         }
       }
       if (options[this.contentType] || options["formData"] || options["form"]) {
         var data = options[this.contentType] || options["formData"] || options["form"];
         if (options["formData"] || options["form"]) {
+          var quote = "'";
           for (k in data) {
             var v = data[k];
             if (v == null || v == undefined) {
               v = "";
             } else if (v instanceof ReadStream) {
+              quote = '"';
               v = "@" + v.path;
             } else if (typeof(v) != 'string') {
               v = v.toString();
             } else if (["password","client_secret","access_token","refresh_token"].indexOf(k)>=0) {
+              quote = '"';
               v = "${" + k.toUpperCase() + "}"; // hide sensitive data
             }
-            curl += options["formData"] ? " -F '" : " -d '";
-            curl += k + "=" + v + "'";
+            curl += options["formData"] ? " -F " : " -d ";
+            curl += quote + k + "=" + v + quote;
           }
         } else {
           if (typeof(data) != 'string' && this.contentType == "json") {

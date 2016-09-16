@@ -285,7 +285,7 @@ client.post("profile/upload-photo",
 If the logging with cURL style is activated, it will log something
 like this:
 
-    [Requesting profile/upload-photo]-> -X POST http://localhost:8080/api/profile/upload-photo -F 'file=@mypic.jpg' -F 'id=1234' -H 'Content-Type:multipart/form-data'
+    [Requesting profile/upload-photo]-> -X POST http://localhost:8080/api/profile/upload-photo -F "file=@mypic.jpg" -F "id=1234" -H 'Content-Type:multipart/form-data'
     [Response   profile/upload-photo]<- Status 200 - {"url":"http://localhost:8080/api/profile/43535342535/mypic.jpg","success":true}
     New photo URL: http://localhost:8080/api/profile/43535342535/mypic.jpg
 
@@ -372,8 +372,8 @@ client.get("home-reports")      // First will try to login with OAuth2, then /ho
 The code above will log this:
 
     [Requesting token]-> -X POST http://localhost:8080/myapi/token -u ${CLIENT_ID}:${CLIENT_SECRET} -d 'grant_type=client_credentials'
-    [Requesting home-reports]-> http://localhost:8080/myapi/home-reports -H 'Authorization: Bearer ${ACCESS_TOKEN}'
-    [Requesting messages]-> http://localhost:8080/myapi/messages -H 'Authorization: Bearer ${ACCESS_TOKEN}'
+    [Requesting home-reports]-> http://localhost:8080/myapi/home-reports -H "Authorization: Bearer ${ACCESS_TOKEN}"
+    [Requesting messages]-> http://localhost:8080/myapi/messages -H "Authorization: Bearer ${ACCESS_TOKEN}"
 
 As you can see, the first operation was get the token against an
 endpoint `/token`, then the call to `/home-reports` was made
@@ -418,7 +418,7 @@ var client = new RequestClient({
 
 This will log in _cURL_ format something like this:
 
-    [Requesting token]-> -X POST http://localhost:8080/myapi/token -u ${CLIENT_ID}:${CLIENT_SECRET} -d 'grant_type=password' -d 'username=myname@mail.com' -d 'password=${PASSWORD}'
+    [Requesting token]-> -X POST http://localhost:8080/myapi/token -u ${CLIENT_ID}:${CLIENT_SECRET} -d 'grant_type=password' -d 'username=myname@mail.com' -d "password=${PASSWORD}"
 
 
 Requirements
