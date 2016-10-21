@@ -206,7 +206,6 @@ client.post("client/orders", {"client": 1234, "ref_id": "A987"}, {headers: {"x-t
 [Requesting client/orders]-> -X POST http://baseurl.com/api/v1.1/client/orders -d '{"client": 1234, "ref_id": "A987"}' -H '{"x-token": "AFF01XX"}' -H Content-Type:application/json
 And when the response is returned ...
 [Response   client/orders]<- Status 200 - {"orderId": 1320934} */
-
 ```
 
 **NOTE**: The logging chosen can affect performance, and most important,
@@ -392,6 +391,33 @@ config object, and also the `baseUrl` used only for the OAuth2 calls:
   } // OAuth against POST https://api.example.com/oauth2/login -u client123:thePass123 ...
   ...
 ```
+
+#### Twitter example
+
+Here is an example of how to consume the Twitter API to get the trending
+topics, without the need to call explicitly the OAuth2
+endpoint (`reqcient` do it for you ;-D):
+
+```js
+var twitterClient = new RequestClient({
+  baseUrl: "https://api.twitter.com/1.1"
+  ,debugRequest:true, debugResponse:true  // Just to log the requests, do not leave this in PROD
+  ,timeout: 5000
+  ,oauth2: {
+    baseUrl: "https://api.twitter.com/oauth2",
+    auth: {user: 'CusumerKeyXXXXX', pass: 'ConsumerSecretYYYYYYY'}
+  }
+});
+twitterClient.get({uri: "trends/place.json", query: {id: 1}});
+```
+
+This will [log](#logging-with-curl-style) something like this:
+
+    [Requesting token]-> -X POST https://api.twitter.com/oauth2/token -u ${CLIENT_ID}:${CLIENT_SECRET} -d 'grant_type=client_credentials' --connect-timeout 5
+    [Response   token]<- Status 200 - {"token_type":"bearer","access_token":"AAAAAAAAAAAAAAAAAAAAAJVbxgAAAAAATO7NfeOihdbfg634hd8fhd35gftfhfTtovgdgFxghO561FfdggT5c0EkLng4yBEwght3bfDGf47hbSk3"}
+    [Requesting trends/place.json]-> https://api.twitter.com/1.1/trends/place.json?id=1 -H "Authorization: Bearer ${ACCESS_TOKEN}" --connect-timeout 5
+    [Response   trends/place.json]<- Status 200 - [{"trends":[{"name":"#CiberAtaque","url":"http:\/\/twitter.com\/search?q=%23CiberAtaque","promoted_content":null,"query":"%23CiberAtaque","tweet_volume":19537},{"name":"DDoS","url":"http:\/\/twitter.com\/search?q=DDoS","promoted_content":null,"query":"DDoS","tweet_volume":241579},{"name":"#MafiaSdvConfessoQue","url":"http:\/\/twitter.com\/search?q=%23MafiaSdvConfessoQue","promoted_content":null,"query":"%23MafiaSdvConfessoQue","tweet_volume":null},{"name":"#WhatImGoodAt","url":"http:\/\/twitter.com\/search?q=%23WhatImGoodAt","promoted_content":null,"query":"%23WhatImGoodAt","tweet_volume":null},{"name":"#tvoh","url":"http:\/\/twitter.com\/search?q=%23tvoh","promoted_content":null,"query":"%23tvoh","tweet_volume":null},{"name":"#BlackMirror","url":"http:\/\/twitter.com\/search?q=%23BlackMirror","promoted_content":null,"query":"%23BlackMirror","tweet_volume":14395},{"name":"#MiCuerpoPide","url":"http:\/\/twitter.com\/search?q=%23MiCuerpoPide","promoted_content":null,"query":"%23MiCuerpoPide","tweet_volume":null},{"name":"#QueHacerSiSeCaeTwitter","url":"http:\/\/twitter.com\/search?q=%23QueHacerSiSeCaeTwitter","promoted_content":null,"query":"%23QueHacerSiSeCaeTwitter","tweet_volume":null},{"name":"#GrahamNorton","url":"http:\/\/twitter.com\/search?q=%23GrahamNorton","promoted_content":null,"query":"%23GrahamNorton","tweet_volume":null}],"as_of":"2016-10-21T22:25:06Z","created_at":"2016-10-21T22:19:40Z","locations":[{"name":"Worldwide","woeid":1}]}]
+
 
 
 ### `password` grant type
