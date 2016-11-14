@@ -179,7 +179,7 @@ class RequestClient {
 
   _isTokenExpired(ignoreExpiration) {
     if (ignoreExpiration==true) return true;
-    return !this.tokenData.expires_in || new Date() > this.tokenData._exp;
+    return !this.tokenData.expires_in!=undefined && new Date() > this.tokenData._exp;
   }
 
   _prepareOAuth2Token(ignoreExpiration) {
@@ -244,14 +244,14 @@ class RequestClient {
     }
     self._debugResponse(uri, httpResponse.statusCode, body);
     if (httpResponse.statusCode < 400) {
-      return resolve(self._prepareResponseBody(body));       // Successful request
+      return resolve(self._prepareResponseBody(body, httpResponse));       // Successful request
     }
     if (httpResponse.statusCode==401 && self.oauth2
                       && httpResponse.headers["www-authenticate"]
                       && httpResponse.headers["www-authenticate"].toLowerCase().indexOf("bearer")==0) {
 
       if (ignoreAuthError) {
-        return reject(self._prepareResponseBody(body));
+        return reject(self._prepareResponseBody(body, httpResponse));
       }
       return resolve(self._prepareOAuth2Token(true)
         .then(function (token) {
@@ -265,13 +265,17 @@ class RequestClient {
         })
       );
     }
-    return reject(self._prepareResponseBody(body));        // The server response has status error, due mostly by a wrong client request
+    return reject(self._prepareResponseBody(body, httpResponse));        // The server response has status error, due mostly by a wrong client request
   }
 
   // If the response body is a JSON -> parse it to return as a JSON object.
-  _prepareResponseBody(body) {
+  _prepareResponseBody(body, httpResponse) {
     try {
-      if (typeof body == "string" && this.contentType == 'json') body = JSON.parse(body);
+      if (typeof body == "string" &&
+             ( this.contentType == 'json' ||
+              (httpResponse && httpResponse.headers['content-type'].indexOf("application/json")>=0) )) {
+        body = JSON.parse(body);
+      }
     } catch (err) {}
     return body;
   }

@@ -2,6 +2,14 @@ reqclient CHANGELOG
 ===================
 
 
+2.0.2
+-----
+
+* Fixed OAuth2 login with unauthorized error response with JSON
+  format are propagated as a string message error.
+* Fixed OAuth2 token expiration check where there is no
+  expiration defined.
+
 2.0.1
 -----
 
