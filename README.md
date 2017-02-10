@@ -2,7 +2,8 @@ reqclient - Node.js HTTP Client
 ===============================
 
 `reqclient` uses module`request` to make requests, but adds
-`Promise` supports, and many useful features.
+`Promise` supports, and many useful features, like `curl` logging
+and **OAuth2** integration.
 
 
 Usage
@@ -95,14 +96,14 @@ following options:
 **[Logging](#logging-with-curl-style) options**:
 
 - `debugRequest` (optional) If it's set to `true`, all requests
-  will logged with `logger` object in a `cURL` style.
+  will logged with the `logger` object in a `cURL` style
 - `debugResponse` (optional) If it's set to `true`, all responses
-  will logged with `logger` object.
+  will logged with the `logger` object
 - `logger` (optional, by default uses the `console` object)
   The logger used to log requests, responses and errors
 
 The options `timeout`, `headers`, `auth` and `encodeQuery`
-can be overridden when you make a call passing in an object as a
+can be overridden when you make a call passing in an object in the
 last argument:
 
 ```js
@@ -184,15 +185,18 @@ the concatenation with the `baseUrl` is avoided.
 Logging with cURL style
 -----------------------
 
-By default `reqclient` uses the standard `console` object for the
-log activity, and only logs error responses. But when the `RequestClient`
-object is created, the constructor parameters passed can
-override this behavior (see above section).
+By default `reqclient` uses the global `console` object to log
+the activity, and only logs error responses by default.
+But when the `RequestClient` object is created, you can configure
+it to log all the requests made, and/or the responses.
 
-In case the request activity is logged, the `_debugRequest()` method
-will print with a `cURL` syntax format _(awesome!)_. This is really
+If you set `debugRequest: true` in the constructor, all requests
+will logged with a `cURL` syntax format _(awesome!)_. This is really
 useful in development phase, when you need to know what it's doing your
 application, and you need to reproduce the calls outside the application.
+
+And with `debugResponse: true` all the responses will logged, both
+the HTTP status and the HTTP body.
 
 ```js
 var RequestClient = require("reqclient").RequestClient;
@@ -201,19 +205,49 @@ var client = new RequestClient({
         debugRequest: true, debugResponse: true
     });
 
-client.post("client/orders", {"client": 1234, "ref_id": "A987"}, {headers: {"x-token": "AFF01XX"}})
-/* This will log ...
-[Requesting client/orders]-> -X POST http://baseurl.com/api/v1.1/client/orders -d '{"client": 1234, "ref_id": "A987"}' -H '{"x-token": "AFF01XX"}' -H Content-Type:application/json
-And when the response is returned ...
-[Response   client/orders]<- Status 200 - {"orderId": 1320934} */
+client.post("client/orders", {"client": 1234, "ref_id": "A987"}, {headers: {"x-token": "AFF01XX"}});
 ```
+
+This will log:
+
+    [Requesting client/orders]-> -X POST http://baseurl.com/api/v1.1/client/orders -d '{"client": 1234, "ref_id": "A987"}' -H '{"x-token": "AFF01XX"}' -H Content-Type:application/json
+
+And when the response is returned ...
+
+    [Response   client/orders]<- Status 200 - {"orderId": 1320934}
+
+To use other logger instead of the `console` object, you need to
+pass the logger object to the constructor in the `logger` option.
+
+For example, if you want to use [Winston](https://www.npmjs.com/package/winston)
+to log both to the console and to a local file:
+
+```js
+let RequestClient = require('reqclient').RequestClient;
+let winston       = require('winston');
+
+winston.add(winston.transports.File, { filename: 'app.log' });
+
+let client = new RequestClient({
+  baseUrl: "http://httpbin.org"
+  ,debugRequest:true, debugResponse:true
+  ,logger: winston
+  ,timeout: 10000
+});
+
+client.get(uri, options);  // The response will output to
+                           // the console and the app.log file
+```
+
+*Winston* has many options, and integrations like
+[winston-cloudwatch](https://www.npmjs.com/package/winston-cloudwatch) to
+log to the *AWS CloudWatch Logs* platform.
 
 **NOTE**: The logging chosen can affect performance, and most important,
 it might have information security implications for your deployment,
 because the logger doesn't filter any sensitive data, like passwords,
-tokens, and private information. Don't set `debugRequest`
+tokens, and private information. **Don't** set `debugRequest`
 or `debugResponse` to `true` in production environments.
-
 
 Cache
 -----

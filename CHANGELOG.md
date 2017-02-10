@@ -2,6 +2,12 @@ reqclient CHANGELOG
 ===================
 
 
+2.1.0
+-----
+
+* Use to output logs `logger.info()` instead of `logger.log()`
+  to be compliant with external loggers.
+
 2.0.2
 -----
 

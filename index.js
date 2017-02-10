@@ -418,7 +418,7 @@ class RequestClient {
       if (typeof(uri)!='string') {
         uri = uri["uri"];
       }
-      this.logger.log("[Requesting %s]-> %s", uri, curl);
+      this.logger.info("[Requesting %s]-> %s", uri, curl);
     }
   }
 
@@ -431,7 +431,7 @@ class RequestClient {
         body = JSON.stringify(body);
       }
       if (status<400) {
-        this.logger.log("[Response   %s]<- Status %s - %s", typeof(uri) == 'string' ? uri : uri['uri'], status, body);
+        this.logger.info("[Response   %s]<- Status %s - %s", typeof(uri) == 'string' ? uri : uri['uri'], status, body);
       } else {
         this.logger.error("[Response   %s]<- Status %s - %s", typeof(uri) == 'string' ? uri : uri['uri'], status, body);
       }
@@ -441,7 +441,7 @@ class RequestClient {
   // Debug response cache
   _debugCacheResponse(uri, body) {
     if (this.debugResponse) {
-      this.logger.log("[Response   %s]<- Returning from cache", typeof(uri) == 'string' ? uri : uri['uri']);
+      this.logger.info("[Response   %s]<- Returning from cache", typeof(uri) == 'string' ? uri : uri['uri']);
     }
   }
 
