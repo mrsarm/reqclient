@@ -2,6 +2,12 @@ reqclient CHANGELOG
 ===================
 
 
+2.2.0
+-----
+
+* Fixed array parameters in "query" object parsed as
+  unique param in URIs.
+
 2.1.0
 -----
 
