@@ -27,7 +27,7 @@ var RequestClient = require("reqclient").RequestClient;
 
 var client = new RequestClient("http://baseurl.com/api/");
 
-// Simple GET with Promise handling
+// Simple GET with Promise handling to http://baseurl.com/api/reports/clients
 client.get("reports/clients")
   .then(function(response) {
     console.log(response);  // REST responses are parsed as JSON objects
@@ -47,7 +47,7 @@ client.get({"uri": "orders", "query": {"state": "open", "limit": 10}})
 client.delete({
     "uri": "orders/{client}/{id}",
     "params": {"client": "A987", "id": 1234}
-}).then(handler).catch(errorHanler);
+}).then(handler).catch(errorHandler);
 ```
 
 Allows most common HTTP operations: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`.
@@ -80,7 +80,7 @@ following options:
       `debugResponse`, `logger`, `auth`
     - `contentType` (default `form`)
     - `tokenEndpoint` (default `token` as recommended by the standard)
-    - grantType (default `client_credentials` if `oauth2.user` isn't
+    - `grantType` (default `client_credentials` if `oauth2.user` isn't
       provided, otherwise `password`) The `grant_type` parameter provider
       to the endpoint to specify the authentication type
     - `user` (optional) Object with the user authentication information
