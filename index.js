@@ -342,11 +342,13 @@ class RequestClient {
       if ("query" in uri && uri["query"]) {
         var encodeQuery = options!=undefined && options.encodeQuery!=undefined ? options.encodeQuery : this.encodeQuery;
         for (var k in uri["query"]) {
-          var value = uri["query"][k];
-          if (encodeQuery && typeof(value) == 'string') {
-            value = encodeURIComponent(value);
+          var values = uri["query"][k] instanceof Array ? uri["query"][k] : [uri["query"][k]];
+          for (var value of values) {
+            if (encodeQuery && typeof(value) == 'string') {
+              value = encodeURIComponent(value);
+            }
+            query.push(k + "=" + value);
           }
-          query.push(k + "=" + value);
         }
       }
       if ("params" in uri && uri["params"]) {
