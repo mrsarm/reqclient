@@ -116,18 +116,18 @@ class RequestClient {
   request(method, uri, data, options) {
     if (this.cache && method=='GET' && options && options.cacheTtl!=undefined) {
       var self = this;
-      return new Promise(function(resolve, reject) {
+      return new Promise((resolve, reject) => {
         var parsedUri = self._parseUri(uri, options);
-        self.cache.get(parsedUri, function (err, value) {
+        self.cache.get(parsedUri, (err, value) => {
           if (!err) {
             if (value!=undefined) {
               self._debugCacheResponse(uri, value);
               resolve(value);
             } else {
               // Do the request and save the result in the cache before returns (anyway returns in async way the promise)
-              resolve(self._doRequest(method, uri, undefined, options).then(function(result) {
+              resolve(self._doRequest(method, uri, undefined, options).then(result => {
                 if (typeof(options.cacheTtl)=='number') {
-                  self.cache.set(parsedUri, result, options.cacheTtl, function(err, success) {
+                  self.cache.set(parsedUri, result, options.cacheTtl, (err, success) => {
                       if (err || !success)
                         self.logger.error('Error saving "%s" in cache. %s', parsedUri, err)
                     });
@@ -167,7 +167,7 @@ class RequestClient {
     if (this.cache) {
       var parsedUri = this._parseUri(uri);
       var self = this;
-      this.cache.del(parsedUri, function(err, count) {
+      this.cache.del(parsedUri, (err, count) => {
         if(err) {
           self.logger.error('Error deleting cache element "%s". %s', parsedUri, err);
         }
@@ -221,10 +221,10 @@ class RequestClient {
 
   _doRequest(method, uri, data, options) {
     var self = this;
-    return self._prepareReqOptions(method, uri, data, options).then(function(reqOptions) {
-      return new Promise(function(resolve, reject) {
+    return self._prepareReqOptions(method, uri, data, options).then((reqOptions) => {
+      return new Promise((resolve, reject) => {
         self._debugRequest(reqOptions, uri);
-        request(reqOptions, function(error, httpResponse, body) {
+        request(reqOptions, (error, httpResponse, body) => {
           self._handleResponse(error, httpResponse, body,
                                method, uri, data, reqOptions,
                                resolve, reject);
@@ -253,16 +253,17 @@ class RequestClient {
       if (ignoreAuthError) {
         return reject(self._prepareResponseBody(body, httpResponse));
       }
-      return resolve(self._prepareOAuth2Token(true)
-        .then(function (token) {
-          reqOptions.auth = token;
-          self._debugRequest(reqOptions, uri);
-          request(reqOptions, function (error, httpResponse, body) {
-            self._handleResponse(error, httpResponse, body,
-              method, uri, data, reqOptions,
-              resolve, reject, true);
-          });
-        })
+      return resolve(
+        self._prepareOAuth2Token(true)
+          .then(token => {
+            reqOptions.auth = token;
+            self._debugRequest(reqOptions, uri);
+            request(reqOptions, (error, httpResponse, body) => {
+              self._handleResponse(error, httpResponse, body,
+                                   method, uri, data, reqOptions,
+                                   resolve, reject, true);
+            });
+          })
       );
     }
     return reject(self._prepareResponseBody(body, httpResponse));        // The server response has status error, due mostly by a wrong client request
@@ -283,7 +284,7 @@ class RequestClient {
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
   _prepareReqOptions(method, uri, data, options) {
     var self = this;
-    return new Promise(function(resolve) {
+    return new Promise(resolve => {
       var reqOptions = {};
       reqOptions.method = method;
       var parsedUri = self._parseUri(uri, options);
