@@ -1,6 +1,11 @@
 reqclient CHANGELOG
 ===================
 
+2.3.0
+-----
+
+* Added `fullResponse` option to return the full response instead
+  of just the body.
 
 2.2.0
 -----

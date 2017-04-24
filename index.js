@@ -52,8 +52,10 @@ class RequestClient {
    *         - password
    * - encodeQuery (optional, default true) Encode query parameters
    *               replacing "unsafe" characters in the URL with the corresponding
-   *                hexadecimal equivalent code (eg. "+" -> "%2B")
-   * - cache (optional, default false) Ff it's set to `true`,
+   *               hexadecimal equivalent code (eg. "+" -> "%2B")
+   * - fullResponse (optional, default false)  If it's set to `true`, returns the full response instead
+   *                of just the body (returns an object with body, statusCode, headers...)
+   * - cache (optional, default false) If it's set to `true`,
    *         adds cache support to GET requests
    * - debugRequest (optional) If it's set to `true`, all requests
    *                will logged with `logger` object in a `cURL` style.
@@ -75,6 +77,7 @@ class RequestClient {
       this.logger = config.logger || console;
       this.headers = config.headers || {};
       this.encodeQuery = config.encodeQuery!=undefined ? config.encodeQuery : true;
+      this.fullResponse = config.fullResponse!=undefined ? config.fullResponse : false;
       if (config.cache) {
         this._initCache();
       }
@@ -244,14 +247,14 @@ class RequestClient {
     }
     self._debugResponse(uri, httpResponse.statusCode, body);
     if (httpResponse.statusCode < 400) {
-      return resolve(self._prepareResponseBody(body, httpResponse));       // Successful request
+      return resolve(self._prepareResponseBody(body, httpResponse, reqOptions));      // Successful request
     }
     if (httpResponse.statusCode==401 && self.oauth2
                       && httpResponse.headers["www-authenticate"]
                       && httpResponse.headers["www-authenticate"].toLowerCase().indexOf("bearer")==0) {
 
       if (ignoreAuthError) {
-        return reject(self._prepareResponseBody(body, httpResponse));
+        return reject(self._prepareResponseBody(body, httpResponse, reqOptions));
       }
       return resolve(
         self._prepareOAuth2Token(true)
@@ -266,19 +269,24 @@ class RequestClient {
           })
       );
     }
-    return reject(self._prepareResponseBody(body, httpResponse));        // The server response has status error, due mostly by a wrong client request
+    return reject(self._prepareResponseBody(body, httpResponse, reqOptions));     // The server response has status error, due mostly by a wrong client request
   }
 
   // If the response body is a JSON -> parse it to return as a JSON object.
-  _prepareResponseBody(body, httpResponse) {
-    try {
-      if (typeof body == "string" &&
-             ( this.contentType == 'json' ||
-              (httpResponse && httpResponse.headers['content-type'].indexOf("application/json")>=0) )) {
-        body = JSON.parse(body);
+  _prepareResponseBody(body, httpResponse, reqOptions) {
+    if (reqOptions.fullResponse) {
+      return httpResponse;
+    } else {
+      try {
+        if (typeof body == "string" &&
+          ( this.contentType == 'json' ||
+          (httpResponse && httpResponse.headers['content-type'].indexOf("application/json") >= 0) )) {
+          body = JSON.parse(body);
+        }
+      } catch (err) {
       }
-    } catch (err) {}
-    return body;
+      return body;
+    }
   }
 
   // Prepare the request [options](https://www.npmjs.com/package/request#requestoptions-callback)
@@ -319,6 +327,11 @@ class RequestClient {
         reqOptions["auth"] = options.auth
       } else if (self.auth) {
         reqOptions["auth"] = self.auth;
+      }
+      if (options && options.fullResponse!=undefined) {
+        reqOptions["fullResponse"] = options.fullResponse;
+      } else {
+        reqOptions["fullResponse"] = self.fullResponse;
       }
       resolve(reqOptions);
     }).then(reqOptions => {

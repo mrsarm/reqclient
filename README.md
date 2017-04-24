@@ -90,6 +90,9 @@ following options:
 - `encodeQuery` (optional, default true) Encode query parameters
   replacing "unsafe" characters in the URL with the corresponding
   hexadecimal equivalent code (eg. `+` -> `%2B`)
+- `fullResponse` (optional, default false)  If it's set to `true`,
+  returns the full response instead
+  of just the body (returns an object with body, statusCode, headers...)
 - `cache` (optional, default false) If it's set to `true`,
   adds [cache](#cache) support to GET requests
 
@@ -102,12 +105,29 @@ following options:
 - `logger` (optional, by default uses the `console` object)
   The logger used to log requests, responses and errors
 
-The options `timeout`, `headers`, `auth` and `encodeQuery`
+The options `timeout`, `headers`, `auth`, `encodeQuery` and `fullResponse`
 can be overridden when you make a call passing in an object in the
 last argument:
 
+Get the full response instead of just the body, and set timeout to 5 seconds:
+
 ```js
-client.patch("patch", {"name":"Mika"}, {headers: {"x-token": "fake_token"}, timeout: 5000});
+client.put({uri:"stats/{id}", params: {id: 555}}, {val:1,type:2}, {fullResponse: true, timeout: 5000})
+.then(httpResponse => {
+  if (httpResponse.statusCode == 201) {
+    // Registry created, do something with httpResponse.body ...
+  } else if (httpResponse.statusCode == 200) {
+    // Registry updated, do something with httpResponse.body ...
+  } else {
+    // Do something
+  }
+});
+```
+
+Add an extra-header (or override a default one from the constructor object):
+
+```js
+client.post("users", {"name":"Mika"}, {headers: {"x-token": "fake_token"}})
 ```
 
 
