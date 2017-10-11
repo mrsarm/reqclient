@@ -501,6 +501,68 @@ This will log in _cURL_ format something like this:
     [Requesting token]-> -X POST http://localhost:8080/myapi/token -u ${CLIENT_ID}:${CLIENT_SECRET} -d 'grant_type=password' -d 'username=myname@mail.com' -d "password=${PASSWORD}"
 
 
+Using reqclient in a project
+----------------------------
+
+The best way to use the library is create a module to export the object
+pointing to the API and the necessary configurations to connect with.
+
+Let's look an example with an _Express.js_ project.
+
+Module `client.js`:
+
+```js
+let RequestClient = require("reqclient").RequestClient
+
+let client = new RequestClient({
+  baseUrl: "https://myapp.com/api/v1",
+  cache: true,
+  auth: {user: "admin", pass: "secret"}
+})
+
+module.exports = client
+```
+
+And in the controllers where you need to consume the API use like this:
+
+```js
+let client = require('client')
+//let router = ...
+
+router.get('/dashboard', (req, res) => {
+  // Simple GET with Promise handling to https://myapp.com/api/v1/reports/clients
+  client.get("reports/clients")
+    .then(response => {
+       console.log("Report for client", response.userId)  // REST responses are parsed as JSON objects
+       res.render('clients/dashboard', {title: 'Customer Report', report: response})
+    })
+    .catch(err => {
+      console.error("Ups!", err)
+      res.status(400).render('error', {error: err})
+    })
+})
+
+router.get('/orders', (req, res, next) => {
+  // GET with query (https://myapp.com/api/v1/orders?state=open&limit=10)
+  client.get({"uri": "orders", "query": {"state": "open", "limit": 10}})
+    .then(orders => {
+      res.render('clients/orders', {title: 'Customer Orders', orders: orders})
+    })
+    .catch(err => someErrorHandler(req, res, next))
+})
+
+router.delete('/orders', (req, res, next) => {
+  // DELETE with params (https://myapp.com/api/v1/orders/1234/A987)
+  client.delete({
+    "uri": "orders/{client}/{id}",
+    "params": {"client": req.body.clientId, "id": req.body.orderId}
+  })
+  .then(resp => res.status(204))
+  .catch(err => someErrorHandler(req, res, next))
+})
+```
+
+
 Requirements
 ------------
 
