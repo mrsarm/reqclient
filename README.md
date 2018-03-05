@@ -14,12 +14,13 @@ HTTP client module [request](https://www.npmjs.com/package/request),
 but makes requests returning
 [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 objects to handle the responses without blocking
-the execution, and **removes boilerplate configurations** on each
+the execution but avoiding the _callback hell_ anti-pattern,
+and **removes boilerplate configurations** on each
 request: base URL, time out, content type format, default headers,
 parameters and query formatting in the URL, authentication,
 and error handling.
 
-Also support **in-memory cache** of GET responses, and allows to
+Also support **async/await** syntax, **in-memory cache** of GET responses, and allows to
 **log all operations** in `cURL` syntax style.
 
 ```js
@@ -38,12 +39,19 @@ client.get("reports/clients")
 
 // POST with JSON body and headers
 var p = client.post("order", {"client": 1234, "ref_id": "A987"}, {headers: {"x-token": "AFF01XX"}})
-// Do something with the Promise `p` ...
+// Do something with the Promise `p`... or use async / await syntax instead:
+let order = await client.post("order", {"client": 1234, "ref_id": "A987"}, {headers: {"x-token": "AFF01XX"}})
+console.log("Order ID:", order.id)
 
 // GET with query (http://baseurl.com/api/orders?state=open&limit=10)
-client.get({"uri": "orders", "query": {"state": "open", "limit": 10}})
+let orders = await client.get({"uri": "orders", "query": {"state": "open", "limit": 10}})
+for (order of orders) {
+  // Do something with the order
+}
 
-// DELETE with params (http://baseurl.com/api/orders/1234/A987)
+// DELETE with params (http://baseurl.com/api/orders/1234/A987), and
+// attach functions to the the promise to handle the response whether is
+// a successful or a fail response
 client.delete({
     "uri": "orders/{client}/{id}",
     "params": {"client": "A987", "id": 1234}
@@ -67,6 +75,9 @@ following options:
 - `headers` (optional) Object with default values to send as headers.
   Additional headers values can be added in the request
   call, even override these values
+
+### Authentication options
+
 - `auth` (optional) [HTTP Authentication](#http-authentication) options.
   The object must contain:
     - user || username
@@ -96,7 +107,9 @@ following options:
 - `cache` (optional, default false) If it's set to `true`,
   adds [cache](#cache) support to GET requests
 
-**[Logging](#logging-with-curl-style) options**:
+### Logging options
+
+Options for [Logging with curl style](#logging-with-curl-style):
 
 - `debugRequest` (optional) If it's set to `true`, all requests
   will logged with the `logger` object in a `cURL` style
@@ -104,6 +117,8 @@ following options:
   will logged with the `logger` object
 - `logger` (optional, by default uses the `console` object)
   The logger used to log requests, responses and errors
+
+### Override options
 
 The options `timeout`, `headers`, `auth`, `encodeQuery` and `fullResponse`
 can be overridden when you make a call passing in an object in the
@@ -526,7 +541,7 @@ module.exports = client
 And in the controllers where you need to consume the API use like this:
 
 ```js
-let client = require('client')
+let client = require('./client')
 //let router = ...
 
 router.get('/dashboard', (req, res) => {
@@ -555,7 +570,7 @@ router.delete('/orders', (req, res, next) => {
   // DELETE with params (https://myapp.com/api/v1/orders/1234/A987)
   client.delete({
     "uri": "orders/{client}/{id}",
-    "params": {"client": req.body.clientId, "id": req.body.orderId}
+    "params": {"client": req.body.clientId, "id": req.body.orderId}   // Pass param from the request form/body
   })
   .then(resp => res.status(204))
   .catch(err => someErrorHandler(req, res, next))
@@ -578,4 +593,4 @@ About
 
 **Author**: Mariano Ruiz <mrsarm@gmail.com>
 
-2016  |  Apache-2.0
+2016-2018  |  Apache-2.0
