@@ -75,6 +75,15 @@ following options:
 - `headers` (optional) Object with default values to send as headers.
   Additional headers values can be added in the request
   call, even override these values
+- `forever` (optional) set to `true` to use the `forever-agent` (it
+  will keep the connection alive)
+- `gzip` (optional) if `true`, add an `Accept-Encoding` header to request
+  compressed content encodings from the server (if not already present) and
+  decode supported content encodings in the response. Note: Automatic
+  decoding of the response content is performed on the body data returned
+- `followRedirect` (optional, default true) follow HTTP 3xx responses as redirects
+- `followAllRedirects` (optional, default false) follow non-GET HTTP 3xx responses as redirects
+- `maxRedirects` (optional, default 10) the maximum number of redirects to follow
 
 ### Authentication options
 
@@ -120,9 +129,9 @@ Options for [Logging with curl style](#logging-with-curl-style):
 
 ### Override options
 
-The options `timeout`, `headers`, `auth`, `encodeQuery` and `fullResponse`
-can be overridden when you make a call passing in an object in the
-last argument:
+The options `timeout`, `headers`, `auth`, `encodeQuery`, `fullResponse`, `forever`,
+`gzip`, `followRedirect`, `followAllRedirects` and `maxRedirects` can be overridden
+when you make a call passing an object as a last argument.
 
 Get the full response instead of just the body, and set timeout to 5 seconds:
 
@@ -250,6 +259,10 @@ This will log:
 And when the response is returned ...
 
     [Response   client/orders]<- Status 200 - {"orderId": 1320934}
+
+**NOTE**: The options `forever` (header `Connection: keep-alive`) and the option `gzip`
+(header `accept-encoding: gzip, deflate`) are not reflected in the logging
+to get a shorter output.
 
 To use other logger instead of the `console` object, you need to
 pass the logger object to the constructor in the `logger` option.

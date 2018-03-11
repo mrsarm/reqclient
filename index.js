@@ -36,6 +36,13 @@ class RequestClient {
    * - headers (optional) Object with default values to send as headers.
    *           Additional headers values can be added in the request
    *           call, even override these values
+   * - forever (optional) set to `true` to use the `forever-agent` (it will keep the connection alive)
+   * - gzip (optional) if `true`, add an `Accept-Encoding` header to request compressed content encodings
+   *   from the server (if not already present) and decode supported content encodings in the response.
+   *   Note: Automatic decoding of the response content is performed on the body data returned
+   * - followRedirect (optional, default true) follow HTTP 3xx responses as redirects
+   * - followAllRedirects (optional, default false) follow non-GET HTTP 3xx responses as redirects
+   * - maxRedirects (optional, default 10) the maximum number of redirects to follow
    * - auth (optional) HTTP Authentication options. The object must contain:
    *     - user || username
    *     - pass || password
@@ -76,6 +83,18 @@ class RequestClient {
       this.debugResponse = config.debugResponse || false;
       this.logger = config.logger || console;
       this.headers = config.headers || {};
+      if (config.forever!=undefined) {
+        this.forever = config.forever;
+      }
+      if (config.gzip!=undefined) {
+        this.gzip = config.gzip;
+      }
+      if (config.followRedirect!=undefined) {
+        this.followRedirect = config.followRedirect;
+      }
+      if (config.followAllRedirects!=undefined) {
+        this.followAllRedirects = config.followAllRedirects;
+      }
       this.encodeQuery = config.encodeQuery!=undefined ? config.encodeQuery : true;
       this.fullResponse = config.fullResponse!=undefined ? config.fullResponse : false;
       if (config.cache) {
@@ -328,6 +347,31 @@ class RequestClient {
       } else if (self.auth) {
         reqOptions["auth"] = self.auth;
       }
+      if (options && options.forever!=undefined) {
+        reqOptions["forever"] = options.forever;
+      } else if (self.forever!=undefined) {
+        reqOptions["forever"] = self.forever;
+      }
+      if (options && options.gzip!=undefined) {
+        reqOptions["gzip"] = options.gzip;
+      } else if (self.gzip!=undefined) {
+        reqOptions["gzip"] = self.gzip;
+      }
+      if (options && options.followRedirect!=undefined) {
+        reqOptions["followRedirect"] = options.followRedirect;
+      } else if (self.followRedirect!=undefined) {
+        reqOptions["followRedirect"] = self.followRedirect;
+      }
+      if (options && options.followAllRedirects!=undefined) {
+        reqOptions["followAllRedirects"] = options.followAllRedirects;
+      } else if (self.followAllRedirects!=undefined) {
+        reqOptions["followAllRedirects"] = self.followAllRedirects;
+      }
+      if (options && options.maxRedirects!=undefined) {
+        reqOptions["maxRedirects"] = options.maxRedirects;
+      } else if (self.maxRedirects!=undefined) {
+        reqOptions["maxRedirects"] = self.maxRedirects;
+      }
       if (options && options.fullResponse!=undefined) {
         reqOptions["fullResponse"] = options.fullResponse;
       } else {
@@ -489,7 +533,7 @@ function ConnectionError(message, cause) {
   if (cause) {
     this.cause = cause;
   }
-};
+}
 
 require('util').inherits(ConnectionError, Error);
 
