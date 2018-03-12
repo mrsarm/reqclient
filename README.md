@@ -58,7 +58,9 @@ client.delete({
 }).then(handler).catch(errorHandler);
 ```
 
-Allows most common HTTP operations: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`.
+Allows most common HTTP operations: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`,
+designed to be used in projects to consume REST APIs, but
+can be used for scripting and to consume non API resources as well.
 
 
 Options
@@ -84,6 +86,8 @@ following options:
 - `followRedirect` (optional, default true) follow HTTP 3xx responses as redirects
 - `followAllRedirects` (optional, default false) follow non-GET HTTP 3xx responses as redirects
 - `maxRedirects` (optional, default 10) the maximum number of redirects to follow
+- `requestOptions` (optional) options to be passed to `request` module that are not covered
+  by the other options, like `cert`, `key`, `proxy`, `pool`, etc
 
 ### Authentication options
 
@@ -130,8 +134,8 @@ Options for [Logging with curl style](#logging-with-curl-style):
 ### Override options
 
 The options `timeout`, `headers`, `auth`, `encodeQuery`, `fullResponse`, `forever`,
-`gzip`, `followRedirect`, `followAllRedirects` and `maxRedirects` can be overridden
-when you make a call passing an object as a last argument.
+`gzip`, `followRedirect`, `followAllRedirects`, `maxRedirects` and `requestOptions`
+can be overridden when you make a call passing an object as a last argument.
 
 Get the full response instead of just the body, and set timeout to 5 seconds:
 
@@ -152,6 +156,14 @@ Add an extra-header (or override a default one from the constructor object):
 
 ```js
 client.post("users", {"name":"Mika"}, {headers: {"x-token": "fake_token"}})
+```
+
+Pass advance options to `request` module, like set
+a [pool](https://github.com/request/request#user-content-requestoptions-callback) of
+connection with unlimited sockets:
+
+```js
+client.get("sales", {requestOptions: {pool: {maxSockets: Infinity}}})
 ```
 
 
@@ -271,19 +283,19 @@ For example, if you want to use [Winston](https://www.npmjs.com/package/winston)
 to log both to the console and to a local file:
 
 ```js
-let RequestClient = require('reqclient').RequestClient;
-let winston       = require('winston');
+const RequestClient = require('reqclient').RequestClient
+const winston       = require('winston')
 
-winston.add(winston.transports.File, { filename: 'app.log' });
+winston.add(winston.transports.File, { filename: 'app.log' })
 
-let client = new RequestClient({
+const client = new RequestClient({
   baseUrl: "http://httpbin.org"
   ,debugRequest:true, debugResponse:true
   ,logger: winston
   ,timeout: 10000
-});
+})
 
-client.get(uri, options);  // The response will output to
+client.get(uri, options)   // The response will output to
                            // the console and the app.log file
 ```
 
@@ -293,9 +305,33 @@ log to the *AWS CloudWatch Logs* platform.
 
 **NOTE**: The logging chosen can affect performance, and most important,
 it might have information security implications for your deployment,
-because the logger doesn't filter any sensitive data, like passwords,
+because the logger can expose sensitive data, like passwords,
 tokens, and private information. **Don't** set `debugRequest`
 or `debugResponse` to `true` in production environments.
+
+The best way to setup the logging only for no-production environment
+is to use environment variables, eg.:
+
+```js
+const debug = process.env.DEBUG == 'true'
+
+const client = new RequestClient({
+  baseUrl: "http://httpbin.org"
+  ,debugRequest:  debug
+  ,debugResponse: debug
+  // ...
+})
+```
+
+So if you launch your app like this:
+
+```bash
+$ DEBUG=true node myserver.js
+```
+
+Debug will be activated, if you set `DEBUG=false` instead (or avoid to setting it),
+the logging will be disabled for requests.
+
 
 Cache
 -----
@@ -540,22 +576,33 @@ Let's look an example with an _Express.js_ project.
 Module `client.js`:
 
 ```js
-let RequestClient = require("reqclient").RequestClient
+const RequestClient = require("reqclient").RequestClient
 
-let client = new RequestClient({
+const client = new RequestClient({
   baseUrl: "https://myapp.com/api/v1",
   cache: true,
+  gzip: true,
+  forever: true,
   auth: {user: "admin", pass: "secret"}
 })
 
 module.exports = client
 ```
 
-And in the controllers where you need to consume the API use like this:
+In the example above, we created a client to connect to an API
+at https://myapp.com/api/v1/, the API requires to pass credentials
+on each request, so we use the `auth` object to perform an
+[HTTP Authentication](#http-authentication), and to boost the
+performance, we activated a [cache](#cache) for GET requests,
+Gzip connections to save network bandwidth, and the option `forever`
+that will keep connections alive for a while.
+
+In the controllers where you need to consume the API, you can use
+the `client` object created like this:
 
 ```js
-let client = require('./client')
-//let router = ...
+const client = require('./client')
+//const router = ...
 
 router.get('/dashboard', (req, res) => {
   // Simple GET with Promise handling to https://myapp.com/api/v1/reports/clients

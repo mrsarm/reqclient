@@ -1,4 +1,4 @@
-// Copyright 2016 Mariano Ruiz <mrsarm@gmail.com>
+// Copyright 2016-2018 Mariano Ruiz <mrsarm@gmail.com>
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -43,6 +43,8 @@ class RequestClient {
    * - followRedirect (optional, default true) follow HTTP 3xx responses as redirects
    * - followAllRedirects (optional, default false) follow non-GET HTTP 3xx responses as redirects
    * - maxRedirects (optional, default 10) the maximum number of redirects to follow
+   * - requestOptions (optional) options to be passed to `request` module that are not covered
+   *   by the other options, like `cert`, `key`, `proxy`, `pool`, etc
    * - auth (optional) HTTP Authentication options. The object must contain:
    *     - user || username
    *     - pass || password
@@ -72,7 +74,9 @@ class RequestClient {
    *          The logger used to log requests, responses and errors
    */
   constructor(config) {
-    if (typeof(config)!='string') {
+    if (typeof(config)=='string') {
+      this.baseUrl = config;
+    } else {
       this.baseUrl = config.baseUrl;
       if (this.baseUrl[this.baseUrl.length - 1] != "/") {
         this.baseUrl += "/";
@@ -96,6 +100,7 @@ class RequestClient {
         this.followAllRedirects = config.followAllRedirects;
       }
       this.encodeQuery = config.encodeQuery!=undefined ? config.encodeQuery : true;
+      this.requestOptions = config.requestOptions || {};
       this.fullResponse = config.fullResponse!=undefined ? config.fullResponse : false;
       if (config.cache) {
         this._initCache();
@@ -130,8 +135,6 @@ class RequestClient {
         oauth2Config.timeout = this.oauth2.timeout ? this.oauth2.timeout : this.timeout;
         this.oauth2._client = new RequestClient(oauth2Config);
       }
-    } else {
-      this.baseUrl = config;
     }
   }
 
@@ -320,6 +323,9 @@ class RequestClient {
       } else {
         reqOptions["url"] = self.baseUrl + parsedUri;
       }
+      for (var k in self.requestOptions) {
+        reqOptions[k] = self.requestOptions[k];
+      }
       if ((options && options.headers) || self.headers) {
         if (options && options.headers) {
           reqOptions["headers"] = Object.assign({}, self.headers, options.headers);
@@ -376,6 +382,11 @@ class RequestClient {
         reqOptions["fullResponse"] = options.fullResponse;
       } else {
         reqOptions["fullResponse"] = self.fullResponse;
+      }
+      if (options && options.requestOptions) {
+        for (var k in options.requestOptions) {
+          reqOptions[k] = options.requestOptions[k];
+        }
       }
       resolve(reqOptions);
     }).then(reqOptions => {
