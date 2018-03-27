@@ -1,6 +1,6 @@
 {
   "name": "reqclient",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "reqclient uses 'request' to make requests, but adds 'Promise' supports, and many useful features like curl logging and OAuth2 integration.",
   "author": "Mariano Ruiz <mrsarm@gmail.com> (http://www.mrdev.com.ar)",
   "contributors": [
@@ -22,7 +22,7 @@
     "request": ""
   },
   "devDependencies": {
-    "node-cache": "^3.2.1",
-    "winston": "^2.3.1"
+    "node-cache": "^4.1.1",
+    "winston": "^2.4.1"
   }
 }

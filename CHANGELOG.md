@@ -1,6 +1,21 @@
 reqclient CHANGELOG
 ===================
 
+2.4.0
+-----
+
+* Added `forever` option to setup the `forever-agent`
+  (to keep connections alive).
+* Added `gzip` option to optimize network usage and speed up requests.
+* Added `followRedirect`, `followAllRedirects` and `maxRedirects`
+  options to follow HTTP 3xx responses as redirects
+* Added `requestOptions` option, that allows to pass options
+  to `request` module that are not covered by reqclient's options,
+  like `cert`, `key`, `proxy`, `pool`, etc.
+* Improved the doc, added `async` / `await` examples.
+* Updated dependencies (it's not necessary to update
+  dependencies in projects with oldest versions).
+
 2.3.0
 -----
 
